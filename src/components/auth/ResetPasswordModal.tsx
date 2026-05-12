@@ -111,20 +111,7 @@ function ResetPasswordModalContent({ isOpen, onClose }: ResetPasswordModalProps)
         <div className="px-8 pb-10">
           <form onSubmit={handleResetPassword} className="space-y-5">
 
-            {/* ERROR UI */}
-            <AnimatePresence mode="wait">
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/5 border border-red-500/20 shadow-sm"
-                >
-                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                  <p className="text-xs text-red-400 font-medium">{error}</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+
 
             {/* NEW PASSWORD */}
             <div className="space-y-2">
@@ -157,6 +144,9 @@ function ResetPasswordModalContent({ isOpen, onClose }: ResetPasswordModalProps)
                   value={fpConfirmPassword}
                   onChange={(e) => setFpConfirmPassword(e.target.value)}
                   disabled={loading}
+                  onCopy={(e) => e.preventDefault()}
+                  onPaste={(e) => e.preventDefault()}
+                  onCut={(e) => e.preventDefault()}
                   className="
                     !pl-11 w-full h-12! bg-white/[0.03] border-white/10 rounded-xl
                     focus:border-logo/40 focus:ring-4 focus:ring-logo/5
