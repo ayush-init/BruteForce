@@ -4,12 +4,13 @@
  * Provides secure JWT-based authentication for the DSA Tracker application
  */
 
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 import { ApiError } from "./ApiError";
 import { AccessTokenPayload, RefreshTokenPayload } from '@/lib/server/types/auth.types';
+import { ACCESS_TOKEN_EXPIRES, REFRESH_TOKEN_EXPIRES } from './token-config';
 
 /**
- * Generate access token with 15-minute expiration
+ * Generate access token. Lifetime controlled by ACCESS_TOKEN_EXPIRES env (default "1d").
  * @param payload - User information to encode in token
  * @returns JWT access token string
  * @throws ApiError if token generation fails
@@ -21,9 +22,9 @@ export const generateAccessToken = (
     if (!process.env.ACCESS_TOKEN_SECRET) {
       throw new ApiError(500, "ACCESS_TOKEN_SECRET environment variable is not set", [], "MISSING_SECRET");
     }
-    
+
     return jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {
-      expiresIn: "15m",
+      expiresIn: ACCESS_TOKEN_EXPIRES as SignOptions['expiresIn'],
     });
   } catch (error: unknown) {
     throw new ApiError(500, "Failed to generate access token", [], "TOKEN_GENERATION_ERROR");
@@ -31,7 +32,7 @@ export const generateAccessToken = (
 };
 
 /**
- * Generate refresh token with 7-day expiration
+ * Generate refresh token. Lifetime controlled by REFRESH_TOKEN_EXPIRES env (default "7d").
  * @param payload - User information to encode in token
  * @returns JWT refresh token string
  * @throws ApiError if token generation fails
@@ -43,9 +44,9 @@ export const generateRefreshToken = (
     if (!process.env.REFRESH_TOKEN_SECRET) {
       throw new ApiError(500, "REFRESH_TOKEN_SECRET environment variable is not set", [], "MISSING_SECRET");
     }
-    
+
     return jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, {
-      expiresIn: "7d",
+      expiresIn: REFRESH_TOKEN_EXPIRES as SignOptions['expiresIn'],
     });
   } catch (error: unknown) {
     throw new ApiError(500, "Failed to generate refresh token", [], "TOKEN_GENERATION_ERROR");

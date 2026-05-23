@@ -4,6 +4,7 @@ import { ZodSchema, ZodError } from 'zod';
 import { ApiError } from '@/lib/server/utils/ApiError';
 import { applyRateLimit, LimiterName } from '@/lib/server/rate-limiter';
 import { verifyAccessToken } from '@/lib/server/utils/jwt.util';
+import { REFRESH_TOKEN_EXPIRES_SECONDS } from '@/lib/server/utils/token-config';
 import { AccessTokenPayload } from '@/lib/server/types/auth.types';
 import { handleError, formatZodErrors } from '@/lib/server/error-response';
 
@@ -200,7 +201,7 @@ export function setRefreshTokenCookie(response: NextResponse, refreshToken: stri
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60,
+    maxAge: REFRESH_TOKEN_EXPIRES_SECONDS,
     path: '/',
   });
 }

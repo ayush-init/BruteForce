@@ -8,8 +8,6 @@
  * Skipped from this list:
  * - NODE_ENV / *_EXPIRES — have safe defaults in code
  * - SUPERADMIN_* — only needed by the seed:superadmin script, not at runtime
- * - EMAIL_USER / EMAIL_PASS / EMAIL_SERVICE — deprecated after the SES migration;
- *   kept in .env temporarily for rollback but no longer read by the code
  */
 
 const REQUIRED_RUNTIME_ENV_VARS = [
