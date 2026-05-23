@@ -64,7 +64,7 @@ export default function QuestionsFilter({
         <div className="relative w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground w-4 h-4" />
           <Input
-            placeholder="Search questions..."
+            placeholder="Search by name or paste question link..."
             value={qSearch}
             onChange={(e) => {
               setQSearch(e.target.value);

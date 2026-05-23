@@ -1,48 +1,109 @@
 /**
- * Email Utility - Email sending functionality
- * Provides email sending capabilities with nodemailer
- * Handles OTP email delivery with professional HTML templates
+ * Email Utility — transactional email sending via AWS SES.
+ *
+ * Migrated from Nodemailer (Gmail SMTP) to the AWS SES SDK for better
+ * deliverability, no personal-Gmail daily-send cap, and integration with
+ * the AWS stack we already use.
+ *
+ * Uses the same IAM credentials as S3 (shared `AWS_ACCESS_KEY` /
+ * `AWS_SECRET_KEY` / `AWS_REGION`). The IAM user must have BOTH S3 and
+ * `ses:SendEmail` permissions, and SES must be configured in the same
+ * region/account those credentials point to.
+ *
+ * Two helpers are exported — call sites in auth-password.service.ts are unchanged:
+ *   - sendOTPEmail(email, otp, userName?)               — password reset code
+ *   - sendPasswordChangedEmail(email, userName?)        — post-reset confirmation
+ *
+ * Env vars consumed:
+ *   - AWS_REGION              (shared with S3)
+ *   - AWS_ACCESS_KEY          (shared with S3; needs ses:SendEmail too)
+ *   - AWS_SECRET_KEY          (shared with S3)
+ *   - AWS_SES_FROM_ADDRESS    (verified SES sender identity, e.g. noreply@pwioi.com)
  */
 
-import nodemailer from 'nodemailer';
+import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { ApiError } from './ApiError';
 
-/**
- * Create and configure email transporter
- * @returns Configured nodemailer transporter
- * @throws ApiError if email configuration is missing
- */
-const createTransporter = () => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new ApiError(500, "Email configuration is missing", [], "EMAIL_CONFIG_MISSING");
+// Singleton client — creating one per send leaks sockets and adds latency.
+let sesClient: SESClient | null = null;
+
+function getSesClient(): SESClient {
+  if (sesClient) return sesClient;
+
+  const region = process.env.AWS_REGION;
+  const accessKeyId = process.env.AWS_ACCESS_KEY;
+  const secretAccessKey = process.env.AWS_SECRET_KEY;
+
+  if (!region || !accessKeyId || !secretAccessKey) {
+    throw new ApiError(
+      500,
+      'AWS SES configuration is missing (AWS_REGION / AWS_ACCESS_KEY / AWS_SECRET_KEY)',
+      [],
+      'EMAIL_CONFIG_MISSING'
+    );
   }
-  
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
+
+  sesClient = new SESClient({
+    region,
+    credentials: { accessKeyId, secretAccessKey },
   });
-};
+  return sesClient;
+}
+
+function getFromAddress(): string {
+  const fromAddress = process.env.AWS_SES_FROM_ADDRESS;
+  if (!fromAddress) {
+    throw new ApiError(
+      500,
+      'AWS_SES_FROM_ADDRESS is not configured',
+      [],
+      'EMAIL_CONFIG_MISSING'
+    );
+  }
+  // Friendly name + verified address (RFC 5322 format).
+  // The address part must match an SES-verified identity.
+  return `"BruteForce" <${fromAddress}>`;
+}
 
 /**
- * Send OTP email with professional HTML template
- * @param email - Recipient email address
- * @param otp - One-time password to send
- * @param userName - Optional user name for personalization
- * @throws ApiError if email sending fails
+ * Low-level send. Wraps SES SendEmailCommand and normalises errors so
+ * callers see ApiError(EMAIL_SEND_ERROR) regardless of the underlying cause.
  */
-export const sendOTPEmail = async (email: string, otp: string, userName?: string): Promise<void> => {
+async function sendViaSes(params: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<void> {
+  const client = getSesClient();
+  const command = new SendEmailCommand({
+    Source: getFromAddress(),
+    Destination: { ToAddresses: [params.to] },
+    Message: {
+      Subject: { Data: params.subject, Charset: 'UTF-8' },
+      Body: {
+        Html: { Data: params.html, Charset: 'UTF-8' },
+      },
+    },
+  });
+
+  await client.send(command);
+}
+
+/**
+ * Send OTP email with professional HTML template.
+ * @param email    Recipient email address (must be on a verified identity if SES is still in sandbox)
+ * @param otp      One-time password to display in the email body
+ * @param userName Optional display name for the greeting
+ * @throws ApiError if SES rejects the send (verification, throttling, etc.)
+ */
+export const sendOTPEmail = async (
+  email: string,
+  otp: string,
+  userName?: string
+): Promise<void> => {
   try {
-    const transporter = createTransporter();
-    
     const year = new Date().getFullYear();
-    const mailOptions = {
-      from: `"BruteForce" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Your BruteForce password reset code',
-      html: `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -161,37 +222,52 @@ export const sendOTPEmail = async (email: string, otp: string, userName?: string
     </tr>
   </table>
 </body>
-</html>`,
-    };
+</html>`;
 
-    await transporter.sendMail(mailOptions);
-    // Email sent successfully
+    await sendViaSes({
+      to: email,
+      subject: 'Your BruteForce password reset code',
+      html,
+    });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to send OTP email";
-    throw new ApiError(500, `Email sending failed: ${errorMessage}`, [], "EMAIL_SEND_ERROR");
+    if (error instanceof ApiError) throw error;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to send OTP email';
+    throw new ApiError(
+      500,
+      `Email sending failed: ${errorMessage}`,
+      [],
+      'EMAIL_SEND_ERROR'
+    );
   }
 };
 
 /**
  * Send confirmation email after a successful password reset.
- * Notifies the user their password was changed — security best practice
- * so the legitimate owner can detect/revoke unauthorized resets.
+ * Notifies the user their password was changed — security best practice so the
+ * legitimate owner can detect/revoke unauthorized resets.
+ *
+ * Does NOT throw on failure — the password change already succeeded and we
+ * don't want to roll that back just because a notification email bounced.
  */
-export const sendPasswordChangedEmail = async (email: string, userName?: string): Promise<void> => {
+export const sendPasswordChangedEmail = async (
+  email: string,
+  userName?: string
+): Promise<void> => {
   try {
-    const transporter = createTransporter();
     const year = new Date().getFullYear();
     const changedAt = new Date().toLocaleString('en-US', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-      hour: '2-digit', minute: '2-digit', hour12: true,
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
       timeZone: 'Asia/Kolkata',
     });
 
-    const mailOptions = {
-      from: `"BruteForce" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Your BruteForce password was changed',
-      html: `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -302,13 +378,17 @@ export const sendPasswordChangedEmail = async (email: string, userName?: string)
     </tr>
   </table>
 </body>
-</html>`,
-    };
+</html>`;
 
-    await transporter.sendMail(mailOptions);
+    await sendViaSes({
+      to: email,
+      subject: 'Your BruteForce password was changed',
+      html,
+    });
   } catch (error: unknown) {
     // Don't throw — password reset already succeeded; the email is just a notification.
-    const errorMessage = error instanceof Error ? error.message : 'Failed to send password-changed email';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to send password-changed email';
     console.error('[EMAIL] Password-changed email failed:', errorMessage);
   }
 };

@@ -43,6 +43,59 @@ export const createStudentService = async (data: StudentData) => {
             finalUsername = usernameResult.finalUsername;
         }
 
+        // ─── Pre-flight duplicate checks ────────────────────────────────────────
+        // We do these explicitly (rather than relying on Prisma's P2002 catch)
+        // so we can fetch the EXISTING student's identifying details and tell
+        // the admin exactly which student already owns the conflicting value.
+        // A generic "email already exists" toast forces them to go hunt for
+        // the duplicate; naming the student saves them that trip.
+        // The frontend mapper for these error codes has `useBackendMessage:
+        // true`, so the dynamic message below is what reaches the toast.
+        const emailDupe = await prisma.student.findUnique({
+            where: { email },
+            select: { name: true, enrollment_id: true },
+        });
+        if (emailDupe) {
+            const detail = emailDupe.enrollment_id
+                ? ` (enrollment ID: ${emailDupe.enrollment_id})`
+                : '';
+            throw new ApiError(
+                HTTP_STATUS.CONFLICT,
+                `This email is already used by "${emailDupe.name}"${detail}`,
+                [],
+                'EMAIL_EXISTS'
+            );
+        }
+
+        const usernameDupe = await prisma.student.findUnique({
+            where: { username: finalUsername },
+            select: { name: true, email: true },
+        });
+        if (usernameDupe) {
+            throw new ApiError(
+                HTTP_STATUS.CONFLICT,
+                `This username is already used by "${usernameDupe.name}" (${usernameDupe.email})`,
+                [],
+                'USERNAME_EXISTS'
+            );
+        }
+
+        if (enrollment_id) {
+            const enrollmentDupe = await prisma.student.findUnique({
+                where: { enrollment_id },
+                select: { name: true, email: true },
+            });
+            if (enrollmentDupe) {
+                throw new ApiError(
+                    HTTP_STATUS.CONFLICT,
+                    `This enrollment ID is already used by "${enrollmentDupe.name}" (${enrollmentDupe.email})`,
+                    [],
+                    'ENROLLMENT_ID_EXISTS'
+                );
+            }
+        }
+        // ────────────────────────────────────────────────────────────────────────
+
         // batch exist check karo
         const batch = await prisma.batch.findUnique({
             where: { id: batch_id },
@@ -80,25 +133,32 @@ export const createStudentService = async (data: StudentData) => {
 
     } catch (error: unknown) {
 
+        // ApiError thrown by pre-flight checks above — let it bubble unchanged.
+        if (error instanceof ApiError) throw error;
+
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
 
             if (error.code === "P2002") {
-
+                // Fallback for any unique field we didn't pre-flight-check
+                // (e.g. google_id) or for the rare race where two concurrent
+                // creates pass the pre-flight check simultaneously.
                 const field = error.meta?.target as string[] | undefined;
 
-                if (field?.includes("email"))
-                    throw new ApiError(HTTP_STATUS.CONFLICT, "Email already exists", [], "EMAIL_ALREADY_EXISTS");
+                if (field?.includes("google_id")) {
+                    throw new ApiError(
+                        HTTP_STATUS.CONFLICT,
+                        "Google account already linked to another student",
+                        [],
+                        "DUPLICATE_ENTRY"
+                    );
+                }
 
-                if (field?.includes("username"))
-                    throw new ApiError(HTTP_STATUS.CONFLICT, "Username already exists");
-
-                if (field?.includes("enrollment_id"))
-                    throw new ApiError(HTTP_STATUS.CONFLICT, "Enrollment ID already exists");
-
-                if (field?.includes("google_id"))
-                    throw new ApiError(HTTP_STATUS.CONFLICT, "Google account already linked");
-
-                throw new ApiError(HTTP_STATUS.CONFLICT, "Duplicate field detected");
+                throw new ApiError(
+                    HTTP_STATUS.CONFLICT,
+                    `Duplicate value${field?.length ? ` for field: ${field.join(', ')}` : ''}`,
+                    [],
+                    "DUPLICATE_ENTRY"
+                );
             }
 
             if (error.code === "P2003") {

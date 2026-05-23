@@ -5,9 +5,10 @@
 import React from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Edit2, BarChart3, GraduationCap, MapPin, Edit3 } from 'lucide-react';
+import { Edit2, BarChart3, GraduationCap, MapPin, Edit3, Linkedin, Copy } from 'lucide-react';
 import { StudentProfile } from '@/types/student/index.types';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
+import { showSuccess, showError } from '@/ui/toast';
 
 interface ProfileHeaderProps {
     student: StudentProfile;
@@ -15,6 +16,7 @@ interface ProfileHeaderProps {
     onEditProfile: () => void;
     onShowTopicProgress: () => void;
     onEditUsername?: () => void;
+    onShareLinkedIn?: () => void;
 }
 
 export function ProfileHeader({
@@ -22,8 +24,19 @@ export function ProfileHeader({
     canEdit,
     onEditProfile,
     onShowTopicProgress,
-    onEditUsername
+    onEditUsername,
+    onShareLinkedIn,
 }: ProfileHeaderProps) {
+
+    const handleCopyUrl = async () => {
+        try {
+            const url = typeof window !== 'undefined' ? window.location.href : '';
+            await navigator.clipboard.writeText(url);
+            showSuccess('Link copied!', 'Profile URL copied to clipboard.');
+        } catch {
+            showError('Could not copy', 'Please copy the URL manually.');
+        }
+    };
 
     return (
         <div className="glass backdrop-blur-sm p-4 sm:p-6 lg:p-8 mb-6 sm:mb-4 rounded-2xl ">
@@ -89,6 +102,33 @@ export function ProfileHeader({
                                     <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
                                     {student.city}
                                 </span>
+                            )}
+
+                            {/* SHARE STRIP — only visible to the profile owner */}
+                            {canEdit && (
+                                <div className="flex items-center gap-1.5 ml-1">
+                                    <span className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] select-none">
+                                        Share:
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={onShareLinkedIn}
+                                        aria-label="Share on LinkedIn"
+                                        title="Share on LinkedIn"
+                                        className="flex items-center justify-center w-7 h-7 rounded-full bg-[var(--accent-secondary)] border border-[var(--border)] text-logo hover:bg-logo/15 hover:border-logo/40 transition-all duration-200 hover-glow"
+                                    >
+                                        <Linkedin className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleCopyUrl}
+                                        aria-label="Copy profile link"
+                                        title="Copy profile link"
+                                        className="flex items-center justify-center w-7 h-7 rounded-full bg-[var(--accent-secondary)] border border-[var(--border)] text-logo hover:bg-logo/15 hover:border-logo/40 transition-all duration-200 hover-glow"
+                                    >
+                                        <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
                             )}
 
                             {/* <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">

@@ -20,6 +20,16 @@ export interface ErrorMapping {
   message: string;
   type: 'error' | 'warning' | 'info';
   action?: ErrorAction;
+  /**
+   * If true, the error handler will prefer the backend's dynamic message
+   * over the static `message` field on this mapping. Use this when the
+   * server returns context-specific details (e.g. duplicate item's name)
+   * that the user needs to see in the toast/inline error.
+   *
+   * The static `message` is kept as a fallback in case the backend message
+   * is empty.
+   */
+  useBackendMessage?: boolean;
 }
 
 export type ErrorType = 'error' | 'warning' | 'info' | 'success';

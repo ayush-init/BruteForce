@@ -14,7 +14,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/Select";
 import { InfiniteScrollDropdown } from "@/components/ui/InfiniteScrollDropdown";
 import { AlertTriangle, Plus, Save } from "lucide-react";
 import { createAdminQuestion } from "@/services/admin.service";
@@ -34,6 +33,10 @@ export default function CreateQuestion({
 }: CreateQuestionProps) {
   type FormData = z.infer<typeof createQuestionSchema>;
 
+  // NOTE: `platform` is intentionally omitted from defaults — it's auto-detected
+  // on the server from the question_link URL (leetcode.com → LEETCODE,
+  // geeksforgeeks.org → GFG, anything else → OTHER). See detectPlatform()
+  // in src/lib/server/services/questions/question-utils.service.ts.
   const form = useForm<FormData>({
     resolver: zodResolver(createQuestionSchema),
     defaultValues: {
@@ -41,7 +44,6 @@ export default function CreateQuestion({
       question_link: "",
       topic_id: 0,
       level: "MEDIUM",
-      platform: "LEETCODE",
     },
   });
 
@@ -55,7 +57,6 @@ export default function CreateQuestion({
         question_link: "",
         topic_id: 0,
         level: "MEDIUM",
-        platform: "LEETCODE",
       });
       setError("");
     }
@@ -207,26 +208,8 @@ export default function CreateQuestion({
                 </div>
               </div>
 
-              {/* Platform */}
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">
-                  Platform
-                </Label>
-                <Select
-                  value={form.watch('platform') || "LEETCODE"}
-                  onChange={(val: string | number) => {
-                    form.setValue('platform', val.toString() as "LEETCODE" | "GFG" | "OTHER");
-                    form.trigger('platform');
-                  }}
-                  options={[
-                    { label: "LeetCode", value: "LEETCODE" },
-                    { label: "GeeksforGeeks", value: "GFG" },
-                    { label: "Other", value: "OTHER" },
-                  ]}
-                  disabled={loading}
-                  className="h-11"
-                />
-              </div>
+              {/* Platform field intentionally removed — auto-detected on
+                  the server from the question_link URL. */}
             </div>
             </div>
 

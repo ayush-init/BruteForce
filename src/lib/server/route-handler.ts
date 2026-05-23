@@ -65,7 +65,7 @@ function checkRole(user: AccessTokenPayload, role: RequiredRole): void {
 }
 
 const IP_LIMITERS: LimiterName[] = ['loginIP', 'public'];
-const USER_LIMITERS: LimiterName[] = ['heavy', 'api', 'bulk'];
+const USER_LIMITERS: LimiterName[] = ['heavy', 'api', 'api_admin', 'bulk'];
 
 export function withHandler(
   handler: (ctx: HandlerContext) => Promise<NextResponse>,
@@ -119,8 +119,16 @@ export function withHandler(
       }
 
       // ── Step 4: userId-based rate limit (after auth, per user) ───────────────
+      // Admin/teacher users on the general 'api' limiter are promoted to the
+      // higher 'api_admin' bucket (300/15min vs 200/15min). Admin workflows
+      // legitimately fire many more requests than student workflows. Routes
+      // don't need to opt in — they keep `rateLimit: 'api'` and we swap here.
       if (options.rateLimit && USER_LIMITERS.includes(options.rateLimit) && user) {
-        const limited = await applyRateLimit(req, options.rateLimit, { userId: user.id });
+        const effectiveLimiter: LimiterName =
+          options.rateLimit === 'api' && user.userType === 'admin'
+            ? 'api_admin'
+            : options.rateLimit;
+        const limited = await applyRateLimit(req, effectiveLimiter, { userId: user.id });
         if (limited) return limited;
       }
 
