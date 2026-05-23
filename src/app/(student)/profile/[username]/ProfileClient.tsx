@@ -299,6 +299,86 @@ export default function ProfileClient({ username, initialData }: ProfileClientPr
     heatmapStartMonth: undefined
   };
 
+  const handleShareLinkedIn = async () => {
+    const profileUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const total = codingStats?.totalSolved ?? 0;
+    const easy = codingStats?.easy?.solved ?? 0;
+    const medium = codingStats?.medium?.solved ?? 0;
+    const hard = codingStats?.hard?.solved ?? 0;
+    const globalRank = leaderboard?.globalRank;
+    const cityRank = leaderboard?.cityRank;
+    const city = student.city;
+
+    // LinkedIn doesn't support markdown, so we use Unicode Mathematical Sans-Serif Bold
+    // characters to fake bold text. This is a widely-used LinkedIn formatting trick.
+    const toBold = (str: string) =>
+      str
+        .split('')
+        .map((ch) => {
+          const code = ch.charCodeAt(0);
+          if (code >= 65 && code <= 90) return String.fromCodePoint(0x1d5d4 + (code - 65));
+          if (code >= 97 && code <= 122) return String.fromCodePoint(0x1d5ee + (code - 97));
+          if (code >= 48 && code <= 57) return String.fromCodePoint(0x1d7ec + (code - 48));
+          return ch;
+        })
+        .join('');
+
+    const rankParts: string[] = [];
+    if (globalRank) rankParts.push(`#${globalRank} globally`);
+    if (cityRank) rankParts.push(`#${cityRank} ${city ? `in ${city}` : 'in my city'}`);
+
+    const lines: string[] = [];
+
+    lines.push(`${toBold(`Just crossed a meaningful milestone on BruteForce`)}, my college's DSA practice platform.`);
+    lines.push(``);
+    lines.push(`${toBold(`${total} problems solved`)} so far:`);
+    lines.push(``);
+    lines.push(`→ ${easy} Easy`);
+    lines.push(`→ ${medium} Medium`);
+    lines.push(`→ ${hard} Hard`);
+
+    if (rankParts.length) {
+      lines.push(``);
+      lines.push(`${toBold('Ranking:')} ${rankParts.join(' and ')}.`);
+    }
+
+    lines.push(``);
+    lines.push(`${toBold('The number is not the point.')} The real shift is in how you start thinking:`);
+    lines.push(``);
+    lines.push(`→ You recognize patterns where you used to see chaos`);
+    lines.push(`→ You debug faster and write cleaner code`);
+    lines.push(`→ You ask better questions before you start coding`);
+    lines.push(`→ You stop fearing the hard ones`);
+    lines.push(``);
+    lines.push(`${toBold('Consistency over intensity.')} One problem a day, even on the busy ones.`);
+    lines.push(``);
+    lines.push(`If you are early in your DSA journey, here is what has worked for me:`);
+    lines.push(``);
+    lines.push(`→ Pick one platform and stay loyal`);
+    lines.push(`→ Show up every single day`);
+    lines.push(`→ Never skip the hard ones`);
+    lines.push(`→ Revisit old problems after a week`);
+    lines.push(``);
+    lines.push(`Still a long way to go.`);
+    lines.push(``);
+    lines.push(`My profile: ${profileUrl}`);
+    lines.push(``);
+    lines.push(`#DSA #DataStructures #Algorithms #Coding #BruteForce #pwioi`);
+    const text = lines.join('\n');
+
+    // LinkedIn's undocumented /feed/?shareActive=true&text= endpoint opens the
+    // share composer with the text already prefilled (when the user is logged in).
+    // Also copy to clipboard as a fallback if LinkedIn ignores the param.
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      /* clipboard failure is non-fatal */
+    }
+    const shareUrl = `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`;
+    window.open(shareUrl, '_blank', 'noopener,noreferrer');
+    showSuccess('Opening LinkedIn', 'Your post is ready to share.');
+  };
+
   return (
     <div className="w-full max-w-325 xl:max-w-275 2xl:max-w-325  mx-auto pb-16 mt-3">
 
@@ -311,6 +391,7 @@ export default function ProfileClient({ username, initialData }: ProfileClientPr
         onEditProfile={() => setShowEditModal(true)}
         onShowTopicProgress={() => setShowTopicProgressModal(true)}
         onEditUsername={() => setShowUsernameEditModal(true)}
+        onShareLinkedIn={handleShareLinkedIn}
       />
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-1 space-y-4">
