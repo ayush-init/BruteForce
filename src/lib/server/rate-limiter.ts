@@ -10,6 +10,7 @@ const LIMITERS: Record<LimiterName, { windowSec: number; max: number }> = {
   // same public IP) has headroom for retries, post-login token refreshes,
   // and the occasional double-click. At ~1 login + ~1 refresh per student
   // worst-case, 300 students = ~600 hits; 2000 gives ~3× safety buffer.
+  
   loginIP:    { windowSec: 5 * 60,  max: 2000 },
   // Auth — email based (brute force protection: 10 attempts per 15 min per email)
   loginEmail: { windowSec: 15 * 60, max: 10   },
