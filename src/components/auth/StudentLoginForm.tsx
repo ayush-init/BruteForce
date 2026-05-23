@@ -165,6 +165,9 @@ export function StudentLoginForm() {
               type={showPassword ? "text" : "password"}
               {...form.register('password')}
               disabled={loading || form.formState.isSubmitting}
+              onCopy={(e) => e.preventDefault()}
+              onPaste={(e) => e.preventDefault()}
+              onCut={(e) => e.preventDefault()}
               placeholder="Enter your password"
               className="w-full h-12 pl-11 pr-10 border border-border rounded-xl text-sm text-foreground placeholder:text-slate-600 focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-logo/40 transition-all"
             />

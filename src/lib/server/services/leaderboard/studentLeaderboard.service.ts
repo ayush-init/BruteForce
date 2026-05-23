@@ -113,9 +113,9 @@ export async function getStudentLeaderboard(
         b.medium_assigned,
         b.easy_assigned,
         ROUND(
-          (l.hard_solved::numeric / NULLIF(b.hard_assigned, 0) * 2000) +
-          (l.medium_solved::numeric / NULLIF(b.medium_assigned, 0) * 1500) +
-          (l.easy_solved::numeric / NULLIF(b.easy_assigned, 0) * 1000), 2
+          COALESCE(l.hard_solved::numeric / NULLIF(b.hard_assigned, 0) * 2000, 0) +
+          COALESCE(l.medium_solved::numeric / NULLIF(b.medium_assigned, 0) * 1500, 0) +
+          COALESCE(l.easy_solved::numeric / NULLIF(b.easy_assigned, 0) * 1000, 0), 2
         ) AS score,
         l.last_calculated
     `;

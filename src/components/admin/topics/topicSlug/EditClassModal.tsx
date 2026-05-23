@@ -14,7 +14,7 @@ import {
    DialogFooter,
    DialogDescription,
 } from "@/components/ui/dialog";
-import { Link as LinkIcon } from 'lucide-react';
+import { Link as LinkIcon, Trash2, RotateCcw } from 'lucide-react';
 
 interface EditClassModalProps {
    isOpen: boolean;
@@ -31,6 +31,9 @@ export default function EditClassModal({ isOpen, onClose, onSuccess, batchSlug, 
    const [pdfUrl, setPdfUrl] = useState('');
    const [pdfFile, setPdfFile] = useState<File | null>(null);
    const [showReplaceInputs, setShowReplaceInputs] = useState(false);
+   // When true, the existing PDF will be cleared on Save (no replacement).
+   // Backend already supports this via the `remove_pdf=true` form field.
+   const [removePdf, setRemovePdf] = useState(false);
    const [duration, setDuration] = useState('');
    const [classDate, setClassDate] = useState('');
    const [submitting, setSubmitting] = useState(false);
@@ -50,6 +53,7 @@ export default function EditClassModal({ isOpen, onClose, onSuccess, batchSlug, 
          setClassDate(classData.class_date ? classData.class_date.substring(0, 10) : new Date().toISOString().substring(0, 10));
          setFormError('');
          setShowReplaceInputs(false);
+         setRemovePdf(false);
       }
    }, [classData]);
 
@@ -66,6 +70,8 @@ export default function EditClassModal({ isOpen, onClose, onSuccess, batchSlug, 
          }
          setPdfFile(file);
          setPdfUrl('');
+         // Uploading a replacement overrides a pending "remove" intent.
+         setRemovePdf(false);
          setFormError('');
       }
    };
@@ -74,6 +80,21 @@ export default function EditClassModal({ isOpen, onClose, onSuccess, batchSlug, 
       setPdfFile(null);
       setPdfUrl('');
       setFormError('');
+   };
+
+   // "Remove existing PDF" — does NOT delete immediately. Marks intent;
+   // actual deletion happens server-side on Save (backend already supports
+   // remove_pdf=true on the PATCH endpoint, and handles S3 cleanup).
+   const handleMarkRemoveExisting = () => {
+      setRemovePdf(true);
+      setShowReplaceInputs(false);
+      setPdfFile(null);
+      setPdfUrl('');
+      setFormError('');
+   };
+
+   const handleUndoRemove = () => {
+      setRemovePdf(false);
    };
 
    const handleSubmit = async (e: React.FormEvent) => {
@@ -91,6 +112,12 @@ export default function EditClassModal({ isOpen, onClose, onSuccess, batchSlug, 
             formData.append('pdf_file', pdfFile);
          } else if (pdfUrl) {
             formData.append('pdf_url', pdfUrl);
+         } else if (removePdf && classData?.pdf_url) {
+            // Tell the backend to clear the PDF (and clean up S3 if applicable).
+            // Only send when there's actually an existing PDF to remove —
+            // sending remove_pdf=true on a class with no PDF is a no-op but
+            // pointless noise on the wire.
+            formData.append('remove_pdf', 'true');
          }
 
          await apiClient.patch(`/api/admin/${batchSlug}/topics/${topicSlug}/classes/${classData.slug}`, formData, {
@@ -116,6 +143,7 @@ export default function EditClassModal({ isOpen, onClose, onSuccess, batchSlug, 
       setPdfUrl('');
       setPdfFile(null);
       setShowReplaceInputs(false);
+      setRemovePdf(false);
       setDuration('');
       setClassDate('');
       setFormError('');
@@ -220,7 +248,7 @@ export default function EditClassModal({ isOpen, onClose, onSuccess, batchSlug, 
                      <span className="text-[10px] sm:text-xs text-muted-foreground">(Optional)</span>
                   </label>
 
-                  {classData?.pdf_url && !pdfFile && !pdfUrl && (
+                  {classData?.pdf_url && !pdfFile && !pdfUrl && !removePdf && (
                      <div className="p-3 bg-muted/20 rounded-xl border border-border/40">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                            <div className="flex items-center gap-3">
@@ -240,7 +268,7 @@ export default function EditClassModal({ isOpen, onClose, onSuccess, batchSlug, 
                                  </p>
                               </div>
                            </div>
-                           <div className="flex gap-2 w-full sm:w-auto">
+                           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                               <button
                                  type="button"
                                  onClick={() => window.open(classData.pdf_url, '_blank')}
@@ -257,12 +285,51 @@ export default function EditClassModal({ isOpen, onClose, onSuccess, batchSlug, 
                               >
                                  Replace
                               </button>
+                              <button
+                                 type="button"
+                                 onClick={handleMarkRemoveExisting}
+                                 className="text-xs bg-red-500/10 text-red-500 px-2 py-1 rounded hover:bg-red-500/20 flex-1 sm:flex-none flex items-center justify-center gap-1"
+                              >
+                                 <Trash2 className="w-3 h-3" />
+                                 Remove
+                              </button>
                            </div>
                         </div>
                      </div>
                   )}
 
-                  {(!classData?.pdf_url || showReplaceInputs || pdfFile || pdfUrl) && (
+                  {/* Pending-removal banner: shown after admin clicks Remove
+                      but BEFORE Save. The actual PDF + S3 file are only
+                      deleted server-side when the form is submitted. */}
+                  {removePdf && classData?.pdf_url && (
+                     <div className="p-3 bg-red-500/5 rounded-xl border border-red-500/30">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                           <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center">
+                                 <Trash2 className="w-4 h-4 text-red-500" />
+                              </div>
+                              <div>
+                                 <p className="text-xs sm:text-sm font-medium text-red-500">
+                                    PDF will be removed
+                                 </p>
+                                 <p className="text-[10px] sm:text-xs text-muted-foreground">
+                                    Click <span className="font-semibold">Save Changes</span> to confirm, or undo below.
+                                 </p>
+                              </div>
+                           </div>
+                           <button
+                              type="button"
+                              onClick={handleUndoRemove}
+                              className="text-xs bg-muted/40 text-foreground px-2 py-1 rounded hover:bg-muted/60 flex items-center justify-center gap-1 w-full sm:w-auto"
+                           >
+                              <RotateCcw className="w-3 h-3" />
+                              Undo
+                           </button>
+                        </div>
+                     </div>
+                  )}
+
+                  {(!classData?.pdf_url || showReplaceInputs || pdfFile || pdfUrl) && !removePdf && (
                      <div className="space-y-3">
                         <div>
                            <Input

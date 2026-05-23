@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { studentAuthService } from '@/services/student/auth.service';
 import { useLocalStorage } from '../../shared/hooks/useLocalStorage';
@@ -12,6 +12,28 @@ export function GoogleAuthButton() {
   const [error, setError] = useState('');
   const [, setOnboardingUser] = useLocalStorage('onboardingUser', null);
 
+  // When the user clicks "Continue with Google" we set loading=true and
+  // navigate to Google via window.location.href. If they then press the
+  // browser BACK button, modern browsers restore this page from the
+  // back-forward cache (bfcache) with React state preserved as-is —
+  // so loading stays true forever, the button stays disabled, and the
+  // "Redirecting to Google..." spinner is stuck on screen.
+  //
+  // The `pageshow` event fires both on first load and on bfcache restore;
+  // `event.persisted === true` distinguishes the bfcache case. We reset
+  // state only on bfcache restore so first-time mount behaviour is
+  // unaffected.
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setLoading(false);
+        setError('');
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   const processPostLogin = (u: StudentLoginResponse['user']) => {
     if (!u.leetcode_id || !u.gfg_id || !u.username) {
       localStorage.setItem('onboardingUser', JSON.stringify(u));
@@ -21,24 +43,24 @@ export function GoogleAuthButton() {
     router.push('/');
   };
 
-  
+
   const handleGoogleSignIn = () => {
     if (loading) return;
-    
+
     setLoading(true);
     setError('');
 
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
     const redirectUri = encodeURIComponent(`${window.location.origin}/auth/callback`);
     const scope = encodeURIComponent('openid email profile');
-    
+
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${clientId}&` +
       `redirect_uri=${redirectUri}&` +
       `response_type=id_token&` +
       `scope=${scope}&` +
       `nonce=${Date.now()}`;
-    
+
     window.location.href = googleAuthUrl;
   };
 

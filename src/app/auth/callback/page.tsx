@@ -55,15 +55,6 @@ export default function AuthCallback() {
           return;
         }
 
-        // Decode JWT to validate email domain
-        const payload = JSON.parse(atob(token.split('.')[1]));
-
-        if (!payload.email?.endsWith('@pwioi.com')) {
-          showError('Invalid Email Domain', 'Please use your official PW student email (@pwioi.com) to log in.');
-          router.push('/login');
-          return;
-        }
-
         // Send token to backend for verification using your backend route
         const data = await studentAuthService.googleLogin(token);
 
@@ -84,10 +75,15 @@ export default function AuthCallback() {
           setError('Login failed: No token received');
           showError('Sign-In Failed', 'Session could not be established. Please try logging in again.');
         }
-      } catch (err: any) {
-        const errorMessage = err.message ||
-          err.response?.data?.error ||
-          err.response?.data?.message ||
+      } catch (err: unknown) {
+        const error = err as {
+          message?: string;
+          response?: { data?: { error?: string; message?: string } };
+        };
+
+        const errorMessage = error.message ||
+          error.response?.data?.error ||
+          error.response?.data?.message ||
           'Google login failed';
         setError(errorMessage);
       } finally {

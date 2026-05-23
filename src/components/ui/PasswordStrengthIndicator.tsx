@@ -110,6 +110,9 @@ export function PasswordInputWithValidation({
           value={password}
           onChange={(e) => onPasswordChange(e.target.value)}
           disabled={disabled}
+          onCopy={(e) => e.preventDefault()}
+          onPaste={(e) => e.preventDefault()}
+          onCut={(e) => e.preventDefault()}
           placeholder={placeholder}
           className={`w-full h-12 pl-11 pr-12 border border-foreground/10 ${inputBorderClass} rounded-xl text-sm text-foreground placeholder:text-slate-600 focus:outline-none focus:ring-4 focus:ring-logo/5 transition-all`}
         />
