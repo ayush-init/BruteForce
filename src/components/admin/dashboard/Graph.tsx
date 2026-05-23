@@ -19,7 +19,9 @@ interface CardProps {
 
 export default function Graph({ stats }: GraphProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    
+    <div className="grid  grid-cols-1 lg:grid-cols-3 gap-6">
       {/* DIFFICULTY */}
       <Card title="Difficulty" icon={<BarChart3 />}>
         <DifficultyChart data={stats?.questions_by_level} />
