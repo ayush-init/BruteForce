@@ -68,6 +68,13 @@ function resolveErrorMessage(appError: AppError, options?: HandlerOptions): stri
   const mapping = resolveErrorMapping(appError);
 
   if (mapping) {
+    // Some mappings (e.g. duplicate-resource errors) want the dynamic
+    // backend message — which usually contains the specific item name —
+    // shown instead of a static "already exists" string. Fall back to the
+    // static message only if the backend didn't supply anything.
+    if (mapping.useBackendMessage && appError.message) {
+      return appError.message;
+    }
     return mapping.message;
   }
 

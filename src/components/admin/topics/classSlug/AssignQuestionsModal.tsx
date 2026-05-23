@@ -169,7 +169,7 @@ export default function AssignQuestionsModal({ isOpen, onClose, onSuccess, batch
                <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
                   <Input
-                     placeholder="Search questions by name..."
+                     placeholder="Search by name or paste question link..."
                      value={bankSearch}
                      onChange={(e) => setBankSearch(e.target.value)}
                      className="!pl-12 w-full h-12 rounded-xl text-base focus-visible:ring-2 focus-visible:ring-logo/40 transition"

@@ -289,12 +289,23 @@ export const googleAuth = async (idToken: string) => {
     throw new ApiError(422, "Student not registered by admin", [], "STUDENT_NOT_REGISTERED");
   }
 
-  // Update google_id if not set
+  // Update google_id if not set. Wrapped in try-catch because a student
+  // double-clicking "Sign in with Google" can fire two concurrent requests:
+  // both pass the !student.google_id check, both attempt the update, and
+  // the second one hits Prisma's P2002 unique constraint on google_id.
+  // The desired end state (google_id is populated) is achieved either way,
+  // so we silently swallow that specific collision and continue issuing
+  // the JWT — the user shouldn't see a 500 because they were impatient.
   if (!student.google_id) {
-    await prisma.student.update({
-      where: { id: student.id },
-      data: { google_id: googleId },
-    });
+    try {
+      await prisma.student.update({
+        where: { id: student.id },
+        data: { google_id: googleId },
+      });
+    } catch (e: any) {
+      if (e?.code !== 'P2002') throw e;
+      // P2002 here = google_id already set by a concurrent request. Fine.
+    }
   }
 
   const accessToken = generateAccessToken({

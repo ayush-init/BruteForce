@@ -29,7 +29,7 @@ export function BruteForceLoader({
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
       {/* Soft Glow */}
-      <motion.div
+      {/* <motion.div
         className={`${sizeClasses[size].container} absolute rounded-full bg-[#CCFF00]/10 blur-3xl`}
         animate={{
           scale: [1, 1.4, 1],
@@ -39,7 +39,7 @@ export function BruteForceLoader({
           duration: 2.5,
           repeat: Infinity,
         }}
-      />
+      /> */}
 
       {/* Dots Animation */}
       <div className="flex gap-2">

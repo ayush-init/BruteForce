@@ -32,15 +32,21 @@ export const createQuestionService = async ({
   const finalPlatform =
     platform ?? detectPlatform(question_link);
 
-  // Prevent duplicate question link (must be unique across all topics)
+  // Prevent duplicate question link (must be unique across all topics).
+  // Include the existing question's name in the error so the admin can
+  // immediately identify which question already uses this link.
   const duplicate = await prisma.question.findFirst({
-    where: {
-      question_link,
-    },
+    where: { question_link },
+    select: { question_name: true },
   });
 
   if (duplicate) {
-    throw new ApiError(400, "Question link already exists", [], "QUESTION_LINK_EXISTS");
+    throw new ApiError(
+      400,
+      `A question already exists with the name "${duplicate.question_name}" for this link`,
+      [],
+      "QUESTION_LINK_EXISTS"
+    );
   }
 
   const question = await prisma.question.create({

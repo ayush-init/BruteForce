@@ -71,12 +71,25 @@ export const getAllQuestionsService = async ({
     where.platform = platform as any;
   }
 
-  //  Search filter
+  //  Search filter — match by question name OR question link
   if (search) {
-    where.question_name = {
-      contains: search,
-      mode: "insensitive",
-    };
+    const trimmed = search.trim();
+    if (trimmed) {
+      where.OR = [
+        {
+          question_name: {
+            contains: trimmed,
+            mode: "insensitive",
+          },
+        },
+        {
+          question_link: {
+            contains: trimmed,
+            mode: "insensitive",
+          },
+        },
+      ];
+    }
   }
 
   if (assignmentClassId && normalizedAssignmentStatus !== 'all') {

@@ -290,12 +290,15 @@ export default function BulkUploadModal({
     }
   }, [file, selectedBatch, onSuccess]);
 
-  // Download sample CSV
+  // Download sample CSV. Uses real-looking PW IOI examples so admins can
+  // see the expected name / email / enrollment-id format at a glance
+  // (10-digit enrollment IDs matching the institute pattern, @pwioi.com
+  // emails with the `<firstname>.sot<rollSuffix>` convention).
   const downloadSampleCSV = useCallback(() => {
     const sampleData = [
       ['name', 'email', 'enrollment_id'],
-      ['John Doe', 'john.doe@pwioi.com', 'ENR001'],
-      ['Jane Smith', 'jane.smith@pwioi.com', 'ENR002']
+      ['Dhruv', 'dhruv.sot2428@pwioi.com', '2401012428'],
+      ['Ayush', 'ayush.sot2324@pwioi.com', '2401012324']
     ];
 
     const csvContent = sampleData.map(row => row.join(',')).join('\n');

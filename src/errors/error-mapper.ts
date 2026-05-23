@@ -196,6 +196,20 @@ export const ERROR_CODE_MAPPINGS: Record<string, ErrorMapping> = {
   },
 
   /**
+   * SAME_AS_OLD_PASSWORD - Reset password flow: user typed their current
+   * password as the new one. Backend rejects without consuming the OTP so
+   * the user can retry with a different password within the same 10-min window.
+   * Action: toast - Show specific, actionable message instead of the generic
+   * "Invalid Request" that a bare 400 would render.
+   */
+  SAME_AS_OLD_PASSWORD: {
+    title: 'Pick a different password',
+    message: 'Your new password must be different from your current password.',
+    type: 'warning',
+    action: 'toast',
+  },
+
+  /**
    * INVALID_INPUT - Malformed or incorrect input format
    * Action: inline - Form field error
    */
@@ -251,14 +265,20 @@ export const ERROR_CODE_MAPPINGS: Record<string, ErrorMapping> = {
   },
 
   /**
-   * QUESTION_LINK_EXISTS - Duplicate question URL
-   * Action: inline - Form error on link field
+   * QUESTION_LINK_EXISTS - Duplicate question URL.
+   * The backend returns a dynamic message that includes the name of the
+   * existing question (e.g. "A question already exists with the name
+   * 'Two Sum' for this link") so the admin can immediately identify
+   * which question is the duplicate. `useBackendMessage` makes the
+   * handler use that dynamic message instead of the static fallback below.
+   * Action: toast — surface it prominently; the form also shows it inline.
    */
   QUESTION_LINK_EXISTS: {
     title: 'Duplicate Link',
     message: 'A question with this link already exists.',
     type: 'warning',
-    action: 'inline',
+    action: 'toast',
+    useBackendMessage: true,
   },
 
   /**
@@ -369,47 +389,59 @@ export const ERROR_CODE_MAPPINGS: Record<string, ErrorMapping> = {
   // ===========================================================================
 
   /**
-   * EMAIL_EXISTS - Registration with existing email
-   * Action: inline - Show on email field
+   * EMAIL_EXISTS - Email already used by another account.
+   * The backend returns a dynamic message naming the existing student
+   * (e.g. `This email is already used by "Ayush Chaurasiya" (enrollment
+   * ID: 2401010024)`), so `useBackendMessage` makes the handler surface
+   * that detail instead of the static fallback below.
    */
   EMAIL_EXISTS: {
     title: 'Email Taken',
     message: 'An account with this email already exists.',
     type: 'warning',
-    action: 'inline',
+    action: 'toast',
+    useBackendMessage: true,
   },
 
   /**
-   * USERNAME_EXISTS - Registration with existing username
-   * Action: inline - Show on username field
+   * USERNAME_EXISTS - Username already taken by another student.
+   * Dynamic backend message names the existing owner; see EMAIL_EXISTS
+   * for the pattern.
    */
   USERNAME_EXISTS: {
     title: 'Username Taken',
     message: 'This username is already taken.',
     type: 'warning',
-    action: 'inline',
+    action: 'toast',
+    useBackendMessage: true,
   },
 
   /**
-   * USERNAME_TAKEN - Profile update username conflict
-   * Action: inline - Show on username field
+   * USERNAME_TAKEN - Profile/onboarding username conflict.
+   * Backend supplies a contextual message — e.g. "This username was just
+   * taken by someone else — please pick a different one." when the race
+   * fires during onboarding. `useBackendMessage: true` makes that detail
+   * reach the toast instead of the static fallback below.
    */
   USERNAME_TAKEN: {
     title: 'Username Taken',
     message: 'This username is already taken.',
     type: 'warning',
-    action: 'inline',
+    action: 'toast',
+    useBackendMessage: true,
   },
 
   /**
-   * ENROLLMENT_ID_EXISTS - Duplicate enrollment ID
-   * Action: inline - Admin form error
+   * ENROLLMENT_ID_EXISTS - Enrollment ID already assigned to another
+   * student. Dynamic backend message names the existing owner; see
+   * EMAIL_EXISTS for the pattern.
    */
   ENROLLMENT_ID_EXISTS: {
-    title: 'Duplicate ID',
+    title: 'Duplicate Enrollment ID',
     message: 'This enrollment ID already exists.',
     type: 'warning',
-    action: 'inline',
+    action: 'toast',
+    useBackendMessage: true,
   },
 
   /**

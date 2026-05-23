@@ -20,6 +20,17 @@ import StudentsModals from '@/components/admin/students/StudentsModals';
 import StudentsSkeleton from '@/components/admin/students/StudentsSkeleton';
 import { createStudentSchema, updateStudentSchema, CreateStudentInput, UpdateStudentInput } from '@/schemas/student.schema';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { showSuccess } from '@/ui/toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle } from 'lucide-react';
 
 export default function AdminStudentsPage() {
   const router = useRouter();
@@ -46,6 +57,18 @@ export default function AdminStudentsPage() {
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [isDownloadReportOpen, setIsDownloadReportOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<AdminStudent | null>(null);
+
+  // Confirm-clear modal state. Triggered when an admin saves the edit form
+  // with leetcode_id and/or gfg_id cleared on a student that previously had
+  // them. We pause the submit, show a warning (because clearing those IDs
+  // forces the student back to /onboarding on next login), and only commit
+  // the change if the admin confirms.
+  const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
+  const [pendingEditValues, setPendingEditValues] = useState<UpdateStudentInput | null>(null);
+  const [clearingFields, setClearingFields] = useState<{ leetcode: boolean; gfg: boolean }>({
+    leetcode: false,
+    gfg: false,
+  });
 
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
@@ -161,12 +184,56 @@ export default function AdminStudentsPage() {
         gfg_id: values.gfg_id || undefined,
       };
       await createAdminStudent(payload);
+      showSuccess('Student Added', `${values.name} was added to the batch.`);
       setIsCreateOpen(false);
       resetForms();
       lastFetchStudentsParams.current = { page: 0, limit: 0, search: '' };
       fetchStudents();
     } catch (err: unknown) {
-      // Error is handled by API client interceptor
+      // Error is handled by API client interceptor (shows error toast).
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Actual edit commit — separated so it can be called from both the normal
+  // submit path AND from the confirm-clear dialog after the admin confirms.
+  const commitEdit = async (values: UpdateStudentInput) => {
+    if (!selectedStudent) return;
+    setFormError('');
+    setSubmitting(true);
+    try {
+      // Important: distinguish three cases for LeetCode/GFG IDs:
+      //   - field undefined   → user didn't touch it       → send undefined (Prisma skips)
+      //   - field is ""       → user explicitly cleared it → send null     (Prisma sets NULL)
+      //   - field has content → user set/edited            → send the value
+      //
+      // The previous `values.leetcode_id || undefined` collapsed empty
+      // strings to undefined, which Prisma treats as "skip this column".
+      // That meant clearing an ID silently no-op'd on the database —
+      // exactly the bug we hit. Use the helper below to preserve the
+      // admin's explicit clear intent.
+      const normalizeOptionalId = (raw: string | undefined | null) => {
+        if (raw === undefined) return undefined;
+        const trimmed = (raw ?? '').trim();
+        return trimmed === '' ? null : trimmed;
+      };
+
+      const payload = {
+        ...values,
+        leetcode_id: normalizeOptionalId(values.leetcode_id),
+        gfg_id: normalizeOptionalId(values.gfg_id),
+      } as UpdateStudentInput;
+      await updateAdminStudent(selectedStudent.id, payload);
+      showSuccess('Student Updated', `${values.name || selectedStudent.name}'s details were saved.`);
+      setIsEditOpen(false);
+      setIsConfirmClearOpen(false);
+      setPendingEditValues(null);
+      resetForms();
+      lastFetchStudentsParams.current = { page: 0, limit: 0, search: '' };
+      fetchStudents();
+    } catch (err: unknown) {
+      // Error is handled by API client interceptor (shows error toast).
     } finally {
       setSubmitting(false);
     }
@@ -174,24 +241,39 @@ export default function AdminStudentsPage() {
 
   const handleEditSubmit = async (values: UpdateStudentInput) => {
     if (!selectedStudent) return;
-    setFormError('');
-    setSubmitting(true);
-    try {
-      const payload = {
-        ...values,
-        leetcode_id: values.leetcode_id || undefined,
-        gfg_id: values.gfg_id || undefined,
-      };
-      await updateAdminStudent(selectedStudent.id, payload);
-      setIsEditOpen(false);
-      resetForms();
-      lastFetchStudentsParams.current = { page: 0, limit: 0, search: '' };
-      fetchStudents();
-    } catch (err: unknown) {
-      // Error is handled by API client interceptor
-    } finally {
-      setSubmitting(false);
+
+    // Detect "clearing" intent: a field that previously had a value is
+    // being saved as empty/undefined. Only LeetCode and GFG IDs are gated
+    // by the confirm dialog because removing them forces the student back
+    // to onboarding on next login — non-obvious consequence the admin
+    // should knowingly accept.
+    const clearingLeetcode =
+      !!selectedStudent.leetcode_id &&
+      (!values.leetcode_id || values.leetcode_id.trim() === '');
+    const clearingGfg =
+      !!selectedStudent.gfg_id &&
+      (!values.gfg_id || values.gfg_id.trim() === '');
+
+    if (clearingLeetcode || clearingGfg) {
+      setPendingEditValues(values);
+      setClearingFields({ leetcode: clearingLeetcode, gfg: clearingGfg });
+      setIsConfirmClearOpen(true);
+      return;
     }
+
+    await commitEdit(values);
+  };
+
+  const handleConfirmClear = () => {
+    if (pendingEditValues) {
+      void commitEdit(pendingEditValues);
+    }
+  };
+
+  const handleCancelClear = () => {
+    setIsConfirmClearOpen(false);
+    setPendingEditValues(null);
+    setClearingFields({ leetcode: false, gfg: false });
   };
 
   const handleDeleteSubmit = async () => {
@@ -199,12 +281,13 @@ export default function AdminStudentsPage() {
     setFormError(''); setSubmitting(true);
     try {
       await deleteAdminStudent(selectedStudent.id);
+      showSuccess('Student Deleted', `${selectedStudent.name} was removed.`);
       setIsDeleteOpen(false);
       resetForms();
       lastFetchStudentsParams.current = { page: 0, limit: 0, search: '' }; // Reset to force refetch
       fetchStudents();
     } catch (err: unknown) {
-      // Error is handled by API client interceptor
+      // Error is handled by API client interceptor (shows error toast).
     } finally {
       setSubmitting(false);
     }
@@ -319,6 +402,75 @@ export default function AdminStudentsPage() {
         handleBulkUploadSuccess={handleBulkUploadSuccess}
         selectedBatch={selectedBatch}
       />
+
+      {/*
+        Confirm-clear dialog. Fires only when the admin's edit-form save
+        would blank out a previously-set LeetCode or GFG ID. Reminds the
+        admin that doing so forces the student back to /onboarding on
+        next login, so they can opt out (Cancel) or proceed (Yes, Remove).
+      */}
+      <Dialog
+        open={isConfirmClearOpen}
+        onOpenChange={(open) => {
+          if (!open) handleCancelClear();
+        }}
+      >
+        <DialogContent className="sm:max-w-[460px] p-0 overflow-hidden rounded-2xl">
+          <DialogHeader className="px-6 py-5 border-b border-yellow-500/20 bg-yellow-500/5">
+            <DialogTitle className="flex items-center gap-3 text-lg font-semibold text-yellow-500">
+              <AlertTriangle className="w-5 h-5" />
+              Remove platform ID?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">
+              You're about to clear&nbsp;
+              {clearingFields.leetcode && clearingFields.gfg
+                ? 'the LeetCode and GFG IDs'
+                : clearingFields.leetcode
+                ? 'the LeetCode ID'
+                : 'the GFG ID'}
+              &nbsp;for <span className="font-semibold text-foreground">{selectedStudent?.name}</span>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="px-6 py-5 space-y-3">
+            <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 text-sm text-yellow-200">
+              <p className="font-medium mb-1">What will happen:</p>
+              <ul className="list-disc list-inside space-y-1 text-yellow-200/90">
+                <li>The student's progress sync from that platform will stop.</li>
+                <li>
+                  On their next login they'll be redirected to the
+                  onboarding flow to re-enter the missing ID
+                  {clearingFields.leetcode && clearingFields.gfg ? 's' : ''}.
+                </li>
+                <li>Their existing solved-problem history stays intact.</li>
+              </ul>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              If this was a mistake (e.g. you only meant to fix a typo), pick&nbsp;
+              <span className="font-semibold">Cancel</span> and type the corrected ID instead.
+            </p>
+          </div>
+
+          <DialogFooter className="border-t border-border/40 px-6 py-4 flex gap-2">
+            <Button
+              type="button"
+              onClick={handleCancelClear}
+              disabled={submitting}
+              className="h-10 flex-1 sm:flex-none text-secondary! bg-secondary-foreground!"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmClear}
+              disabled={submitting}
+              className="h-10 flex-1 sm:flex-none font-semibold bg-yellow-500 text-black hover:bg-yellow-400 transition-all"
+            >
+              {submitting ? 'Removing...' : 'Yes, Remove'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -63,9 +63,9 @@ export const syncLeaderboardData = async () => {
           
           -- Calculate all-time score
           ROUND(
-            (COALESCE(ss_all.hard_solved,0)::numeric / NULLIF(b.hard_assigned,0) * 2000) +
-            (COALESCE(ss_all.medium_solved,0)::numeric / NULLIF(b.medium_assigned,0) * 1500) +
-            (COALESCE(ss_all.easy_solved,0)::numeric / NULLIF(b.easy_assigned,0) * 1000), 2
+            COALESCE(COALESCE(ss_all.hard_solved,0)::numeric / NULLIF(b.hard_assigned,0) * 2000, 0) +
+            COALESCE(COALESCE(ss_all.medium_solved,0)::numeric / NULLIF(b.medium_assigned,0) * 1500, 0) +
+            COALESCE(COALESCE(ss_all.easy_solved,0)::numeric / NULLIF(b.easy_assigned,0) * 1000, 0), 2
           ) AS alltime_score,
           
           -- Completion status for freeze logic

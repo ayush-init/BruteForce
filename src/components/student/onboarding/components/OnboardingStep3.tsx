@@ -114,19 +114,25 @@ export function OnboardingStep3({ data, setStep, confirmChecked, setConfirmCheck
       </div>
 
       {/* ✅ CHECKBOX */}
-      <div className="flex items-start gap-2 pt-1">
+      {/* Align checkbox + label on the same baseline. The previous
+          `items-start` + manual `mt-[3px]` was trying to nudge a small
+          checkbox up against multi-line text, but the checkbox actually
+          renders larger than declared (browser/native styling), so the
+          mismatch showed up as the box sitting visibly above the label.
+          `items-center` + a fixed checkbox box-size now line them up. */}
+      <div className="flex items-center gap-2 pt-1">
 
         <input
           type="checkbox"
           id="confirmData"
           checked={confirmChecked}
           onChange={(e) => setConfirmChecked(e.target.checked)}
-          className="mt-[3px] w-3.5 h-3.5 accent-primary cursor-pointer"
+          className="w-4 h-4 shrink-0 accent-primary cursor-pointer"
         />
 
         <label
           htmlFor="confirmData"
-          className="text-[11px] text-muted-foreground leading-snug cursor-pointer"
+          className="text-xs text-muted-foreground leading-none cursor-pointer"
         >
           I confirm these profiles are correct.
         </label>

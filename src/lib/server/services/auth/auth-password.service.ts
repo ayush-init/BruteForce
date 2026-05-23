@@ -91,21 +91,16 @@ export const resetPassword = async (email: string, otp: string, newPassword: str
   // Validate password strength
   validatePasswordForAuth(newPassword);
 
-  // Verify OTP
+  // Verify OTP — but DON'T mark it as used yet. The OTP should only be
+  // consumed when the password actually changes. If we mark it here and
+  // then the new password fails the "same as current" check below, the
+  // user would be forced to request a fresh OTP just because they picked
+  // their old password — which is a bad UX and burns email/SES quota.
   const isValidOTP = await validateOTP(email, otp);
 
   if (!isValidOTP) {
     throw new ApiError(400, 'Invalid or expired OTP', [], 'INVALID_OTP');
   }
-
-  // Mark OTP as used
-  await prisma.passwordResetOTP.updateMany({
-    where: {
-      email,
-      is_used: false
-    },
-    data: { is_used: true }
-  });
 
   // Find user
   let user = null;
@@ -125,29 +120,46 @@ export const resetPassword = async (email: string, otp: string, newPassword: str
     throw new ApiError(404, 'User not found');
   }
 
-  // Check if new password is same as current password
+  // Check if new password is same as current password. If it is, throw
+  // BEFORE we touch the OTP — so the OTP stays valid and the user can
+  // simply retry with a different password (still within the 10-min window).
   if (user.password_hash) {
     const isSamePassword = await comparePassword(newPassword, user.password_hash);
     if (isSamePassword) {
-      throw new ApiError(400, 'New password cannot be the same as your current password');
+      throw new ApiError(
+        400,
+        'New password cannot be the same as your current password',
+        [],
+        'SAME_AS_OLD_PASSWORD'
+      );
     }
   }
 
   // Hash new password
   const password_hash = await hashPassword(newPassword);
 
-  // Update password based on user type
-  if (userType === 'student') {
-    await prisma.student.update({
-      where: { email },
-      data: { password_hash }
+  // Atomically: mark OTP as used AND update the password.
+  // Wrapping both in a single transaction guarantees that the OTP is only
+  // consumed if the password write succeeds — if either fails the whole
+  // thing rolls back and the OTP remains usable.
+  await prisma.$transaction(async (tx) => {
+    await tx.passwordResetOTP.updateMany({
+      where: { email, is_used: false },
+      data: { is_used: true },
     });
-  } else {
-    await prisma.admin.update({
-      where: { email },
-      data: { password_hash }
-    });
-  }
+
+    if (userType === 'student') {
+      await tx.student.update({
+        where: { email },
+        data: { password_hash },
+      });
+    } else {
+      await tx.admin.update({
+        where: { email },
+        data: { password_hash },
+      });
+    }
+  });
 
   // Send confirmation email (non-blocking — failure doesn't affect the password reset itself)
   await sendPasswordChangedEmail(email, user.name);

@@ -171,21 +171,22 @@ export const getAdminStudents = async (params: StudentFilters) => {
   return response.data;
 };
 
+// Success toasts for these three calls are fired by the caller (the admin
+// students page) so we can include the specific student's name in the
+// message rather than a generic "details have been saved". Don't add
+// showSuccess() here or we'll get duplicate toasts on every action.
 export const createAdminStudent = async (data: StudentSubmitPayload) => {
   const response = await apiClient.post('/api/admin/students', data);
-  showSuccess('Student Added', 'The new student account has been created.');
   return response.data;
 };
 
 export const updateAdminStudent = async (id: number, data: StudentSubmitPayload) => {
   const response = await apiClient.patch(`/api/admin/students/${id}`, data);
-  showSuccess('Student Updated', 'The student details have been saved.');
   return response.data;
 };
 
 export const deleteAdminStudent = async (id: number) => {
   const response = await apiClient.delete(`/api/admin/students/${id}`);
-  showSuccess('Student Removed', 'The student account has been deleted.');
   return response.data;
 };
 
