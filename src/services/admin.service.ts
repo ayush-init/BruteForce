@@ -190,6 +190,13 @@ export const deleteAdminStudent = async (id: number) => {
   return response.data;
 };
 
+// Toast fired by the caller (admin students page) so we can include the
+// "X of Y deleted" count in the message.
+export const bulkDeleteAdminStudents = async (ids: number[]) => {
+  const response = await apiClient.post('/api/admin/students/bulk-delete', { ids });
+  return response.data as { requested: number; deleted: number };
+};
+
 export const bulkUploadStudents = async (formData: FormData, defaultPassword?: string) => {
   if (defaultPassword) {
     formData.append('default_password', defaultPassword);

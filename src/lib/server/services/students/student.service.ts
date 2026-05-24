@@ -225,6 +225,57 @@ export const updateStudentDetailsService = async (id: number, body: StudentUpdat
     }
 };
 
+/**
+ * Bulk-delete students by ID. Uses Prisma's `deleteMany` so it runs in a
+ * single statement. We invalidate every affected student's cache afterwards
+ * (best-effort — cache misses recover themselves on next read).
+ *
+ * Returns counts so the caller can surface them to the admin (e.g. "5 of 7
+ * deleted" if some IDs were already gone).
+ */
+export const bulkDeleteStudentsService = async (ids: number[]) => {
+    try {
+        // Snapshot batch_ids before delete so we can invalidate the right batch caches.
+        const existing = await prisma.student.findMany({
+            where: { id: { in: ids } },
+            select: { id: true, batch_id: true },
+        });
+
+        const result = await prisma.student.deleteMany({
+            where: { id: { in: ids } },
+        });
+
+        // Fire-and-forget cache invalidation per deleted student. Don't await
+        // in series — they're independent and a slow cache shouldn't block
+        // the response.
+        await Promise.all(
+            existing.map((s) =>
+                CacheInvalidation.invalidateStudent(s.id, s.batch_id ?? undefined)
+            )
+        );
+
+        return {
+            requested: ids.length,
+            deleted: result.count,
+        };
+    } catch (error: unknown) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            // P2003 (FK constraint) is the most likely failure if a student has
+            // related rows the schema doesn't cascade. Surface it clearly.
+            if (error.code === 'P2003') {
+                throw new ApiError(
+                    HTTP_STATUS.CONFLICT,
+                    'Some students have related data that prevents deletion'
+                );
+            }
+        }
+        throw new ApiError(
+            HTTP_STATUS.INTERNAL_SERVER_ERROR,
+            'Failed to bulk delete students'
+        );
+    }
+};
+
 export const deleteStudentDetailsService = async (id: number) => {
     try {
 

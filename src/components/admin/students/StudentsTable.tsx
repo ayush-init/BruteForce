@@ -29,6 +29,11 @@ interface StudentsTableProps {
   setLimit: (limit: number) => void;
   onEdit: (student: AdminStudent) => void;
   onDelete: (student: AdminStudent) => void;
+  // Selection — controlled by the parent page so the bulk-delete toolbar
+  // (which lives outside this component) stays in sync.
+  selectedIds: number[];
+  onToggleSelect: (id: number) => void;
+  onToggleSelectAll: () => void;
 }
 
 export default function StudentsTable({
@@ -42,7 +47,23 @@ export default function StudentsTable({
   setLimit,
   onEdit,
   onDelete,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
 }: StudentsTableProps) {
+  const selectedSet = new Set(selectedIds);
+  const allOnPageSelected =
+    students.length > 0 && students.every((s) => selectedSet.has(s.id));
+  const someOnPageSelected =
+    students.some((s) => selectedSet.has(s.id)) && !allOnPageSelected;
+  // Indeterminate has to be set imperatively — React doesn't expose it as a prop.
+  const headerCheckboxRef = React.useRef<HTMLInputElement>(null);
+  React.useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = someOnPageSelected;
+    }
+  }, [someOnPageSelected]);
+
   return (
     <div className="glass backdrop-blur-2xl px-3 mb-5 rounded-2xl overflow-hidden">
       <div className="overflow-x-auto">
@@ -50,6 +71,17 @@ export default function StudentsTable({
           {/* HEADER */}
           <TableHeader>
             <TableRow className="bg-muted/30 border-b border-border/40">
+              <TableHead className="w-10">
+                <input
+                  ref={headerCheckboxRef}
+                  type="checkbox"
+                  checked={allOnPageSelected}
+                  onChange={onToggleSelectAll}
+                  disabled={loading || students.length === 0}
+                  aria-label="Select all students on this page"
+                  className="w-4 h-4 accent-primary cursor-pointer disabled:cursor-not-allowed"
+                />
+              </TableHead>
               <TableHead>Student</TableHead>
               <TableHead>Username</TableHead>
               <TableHead className="text-center">Solved</TableHead>
@@ -64,6 +96,9 @@ export default function StudentsTable({
               <>
                 {[1, 2, 3, 4, 5].map((i) => (
                   <TableRow key={`skeleton-${i}`} className="border-b border-border/20">
+                    <TableCell>
+                      <Skeleton className="w-4 h-4 rounded" />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Skeleton className="w-10 h-10 rounded-full" />
@@ -90,7 +125,7 @@ export default function StudentsTable({
               </>
             ) : students.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4}>
+                <TableCell colSpan={5}>
                   <div className="flex flex-col items-center justify-center py-6">
                     <DotLottieReact src="/Empty.json" loop autoplay className="w-40 h-40" />
                     <p className="text-muted-foreground text-sm">No students found</p>
@@ -101,8 +136,20 @@ export default function StudentsTable({
               students.map((student) => (
                 <TableRow
                   key={student.id}
-                  className="border-b border-border/20 hover:bg-muted/30 transition"
+                  data-selected={selectedSet.has(student.id) ? 'true' : undefined}
+                  className="border-b border-border/20 hover:bg-muted/30 transition data-[selected=true]:bg-primary/5"
                 >
+                  {/* SELECT */}
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={selectedSet.has(student.id)}
+                      onChange={() => onToggleSelect(student.id)}
+                      aria-label={`Select ${student.name}`}
+                      className="w-4 h-4 accent-primary cursor-pointer"
+                    />
+                  </TableCell>
+
                   {/* STUDENT */}
                   <TableCell>
                     <Link

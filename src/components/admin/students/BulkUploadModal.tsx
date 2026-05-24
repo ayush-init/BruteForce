@@ -32,7 +32,9 @@ export default function BulkUploadModal({
   const [selectedCity, setSelectedCity] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedBatch, setSelectedBatch] = useState<string>('');
-  const [defaultPassword, setDefaultPassword] = useState<string>('password123');
+  // Must match the literal shown in the modal header ("bruteforce@123") —
+  // there's no input field for this; admins rely on the header text.
+  const [defaultPassword, setDefaultPassword] = useState<string>('bruteforce@123');
   const [loading, setLoading] = useState(false);
   const [csvData, setCsvData] = useState<CsvRowData[]>([]);
   const [showGuide, setShowGuide] = useState(false);
@@ -108,7 +110,7 @@ export default function BulkUploadModal({
       setSelectedCity('');
       setSelectedYear('');
       setSelectedBatch('');
-      setDefaultPassword('password123');
+      setDefaultPassword('bruteforce@123');
       setCsvData([]);
     }
   };
@@ -262,6 +264,14 @@ export default function BulkUploadModal({
   const handleUpload = useCallback(async () => {
     if (!file || !selectedBatch) return;
 
+    // Guard: an empty / too-short default password would either get rejected
+    // by the API or (worse, pre-fix) silently create unloggable accounts.
+    const trimmedPassword = defaultPassword.trim();
+    if (!trimmedPassword || trimmedPassword.length < 6) {
+      setValidationError('Default password must be at least 6 characters');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -269,7 +279,7 @@ export default function BulkUploadModal({
       formData.append('file', file);
       formData.append('batch_id', selectedBatch);
 
-      const result = await bulkUploadStudents(formData);
+      const result = await bulkUploadStudents(formData, trimmedPassword);
 
       setUploadResult(result);
       setShowResult(true);
@@ -288,7 +298,7 @@ export default function BulkUploadModal({
     } finally {
       setLoading(false);
     }
-  }, [file, selectedBatch, onSuccess]);
+  }, [file, selectedBatch, defaultPassword, onSuccess]);
 
   // Download sample CSV. Uses real-looking PW IOI examples so admins can
   // see the expected name / email / enrollment-id format at a glance

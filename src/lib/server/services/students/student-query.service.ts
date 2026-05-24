@@ -185,6 +185,16 @@ export const getAllStudentsService = async (query: any) => {
 
         // Format response (NO in-memory filtering - all filtering done at DB)
         const formatted = students.map((student) => {
+            // Use the same Leaderboard counters that the profile page reads
+            // so admin and student views can't disagree about a student's
+            // total. Falls back to 0 if the student has no leaderboard row
+            // yet (e.g. brand-new student before first cron run).
+            const lb = leaderboardMap.get(student.id);
+            const totalSolved = lb
+                ? Number(lb.easy_solved || 0) +
+                  Number(lb.medium_solved || 0) +
+                  Number(lb.hard_solved || 0)
+                : 0;
             return {
                 id: student.id,
                 name: student.name,
@@ -194,7 +204,7 @@ export const getAllStudentsService = async (query: any) => {
                 profile_image_url: student.profile_image_url,
                 leetcode_id: student.leetcode_id,
                 gfg_id: student.gfg_id,
-                totalSolved: student._count.progress
+                totalSolved
             };
         });
 

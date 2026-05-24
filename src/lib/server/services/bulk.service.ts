@@ -10,7 +10,7 @@ export const bulkStudentUploadService = async (
 
   fileBuffer: Buffer,
 
-  { batch_id }: { batch_id: number }
+  { batch_id, defaultPassword }: { batch_id: number; defaultPassword: string }
 
 ) => {
 
@@ -21,6 +21,10 @@ export const bulkStudentUploadService = async (
 
 
   const stream = Readable.from(fileBuffer);
+
+  // Hash once up-front — bcrypt is expensive, and every uploaded student
+  // shares the same default password anyway.
+  const password_hash = await bcryptjs.hash(defaultPassword, 10);
 
 
 
@@ -92,6 +96,8 @@ export const bulkStudentUploadService = async (
             username,
 
             enrollment_id: row.enrollment_id,
+
+            password_hash,
 
             batch_id,
 

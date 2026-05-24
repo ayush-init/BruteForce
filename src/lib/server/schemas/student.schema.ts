@@ -29,6 +29,18 @@ export const updateStudentSchema = z.object({
 });
 
 /**
+ * Bulk Delete Students Schema
+ * POST /api/admin/students/bulk-delete
+ * Capped at 500 to keep the transaction reasonable and prevent abuse.
+ */
+export const bulkDeleteStudentsSchema = z.object({
+  ids: z
+    .array(z.number().int().positive())
+    .min(1, "At least one student ID is required")
+    .max(500, "Cannot delete more than 500 students at once"),
+});
+
+/**
  * Update Student Profile Schema (Student updates own profile)
  * PUT /api/students/me
  */

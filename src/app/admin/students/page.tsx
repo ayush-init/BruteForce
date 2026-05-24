@@ -8,11 +8,13 @@ import {
   getAdminStudents,
   createAdminStudent,
   updateAdminStudent,
-  deleteAdminStudent
+  deleteAdminStudent,
+  bulkDeleteAdminStudents
 } from '@/services/admin.service';
+import BulkDeleteStudentsModal from '@/components/admin/students/BulkDeleteStudentsModal';
 import { AdminStudent } from '@/types/student/index.types';
 import { ApiError } from '@/types/admin/index.types';
-import { Users } from 'lucide-react';
+import { Users, Trash2, X as XIcon, AlertTriangle } from 'lucide-react';
 import StudentsHeader from '@/components/admin/students/StudentsHeader';
 import StudentsFilter from '@/components/admin/students/StudentsFilter';
 import StudentsTable from '@/components/admin/students/StudentsTable';
@@ -30,7 +32,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
 
 export default function AdminStudentsPage() {
   const router = useRouter();
@@ -72,6 +73,13 @@ export default function AdminStudentsPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Bulk-delete selection. Tracked by id (not by index) so it survives
+  // re-fetches that may re-order rows. Cleared whenever the result set
+  // changes meaningfully (batch / search / page change).
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // React Hook Form for Create
   const createForm = useForm<CreateStudentInput>({
@@ -170,6 +178,58 @@ export default function AdminStudentsPage() {
   useEffect(() => {
     setPage(1);
   }, [selectedBatch?.id]);
+
+  // Clear selection whenever the visible result set could have shifted —
+  // keeping stale IDs selected after a filter change would be confusing,
+  // and the user can't see them to deselect.
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [selectedBatch?.id, debouncedSearch, debouncedPage, debouncedLimit]);
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }, []);
+
+  // Select-all toggles based on whether every row on this page is already
+  // selected — matches the "indeterminate" UX users expect from data tables.
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      const allSelected = students.length > 0 && students.every((s) => prev.includes(s.id));
+      if (allSelected) {
+        const visibleIds = new Set(students.map((s) => s.id));
+        return prev.filter((id) => !visibleIds.has(id));
+      }
+      // Merge — don't drop selections from previous pages.
+      const next = new Set(prev);
+      students.forEach((s) => next.add(s.id));
+      return Array.from(next);
+    });
+  }, [students]);
+
+  const clearSelection = useCallback(() => setSelectedIds([]), []);
+
+  const handleBulkDeleteConfirm = async () => {
+    if (selectedIds.length === 0) return;
+    setBulkDeleting(true);
+    try {
+      const { deleted, requested } = await bulkDeleteAdminStudents(selectedIds);
+      const message =
+        deleted === requested
+          ? `Removed ${deleted} ${deleted === 1 ? 'student' : 'students'}.`
+          : `Removed ${deleted} of ${requested} (some were already gone).`;
+      showSuccess('Bulk Delete Complete', message);
+      setIsBulkDeleteOpen(false);
+      setSelectedIds([]);
+      lastFetchStudentsParams.current = { page: 0, limit: 0, search: '' };
+      fetchStudents();
+    } catch (err: unknown) {
+      // Error is handled by API client interceptor (shows error toast).
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   // Form Handlers with Zod validation
   const handleCreateSubmit = async (values: CreateStudentInput) => {
@@ -366,6 +426,46 @@ export default function AdminStudentsPage() {
         setPage={setPage}
       />
 
+      {/*
+        Bulk-action toolbar — appears only when at least one student is
+        selected. Sits between the filter row and the table so it's visible
+        without scrolling and doesn't compete with the always-on Add/Bulk
+        Upload buttons in the filter row.
+      */}
+      {selectedIds.length > 0 && (
+        <div className="glass backdrop-blur-2xl mb-3 rounded-2xl p-3 px-4 flex items-center justify-between gap-3 border border-primary/20">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary font-semibold text-xs">
+              {selectedIds.length}
+            </span>
+            <span className="text-foreground font-medium">
+              {selectedIds.length === 1 ? 'student' : 'students'} selected
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={clearSelection}
+              disabled={bulkDeleting}
+              className="h-9 rounded-xl px-3 text-xs border!"
+            >
+              <XIcon className="w-3.5 h-3.5 mr-1.5" />
+              Clear
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => setIsBulkDeleteOpen(true)}
+              disabled={bulkDeleting}
+              className="h-9 rounded-xl px-4 text-xs font-semibold"
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+              Delete Selected
+            </Button>
+          </div>
+        </div>
+      )}
+
       <StudentsTable
         students={students}
         loading={loading}
@@ -377,6 +477,17 @@ export default function AdminStudentsPage() {
         setLimit={setLimit}
         onEdit={openEdit}
         onDelete={openDelete}
+        selectedIds={selectedIds}
+        onToggleSelect={toggleSelect}
+        onToggleSelectAll={toggleSelectAll}
+      />
+
+      <BulkDeleteStudentsModal
+        isOpen={isBulkDeleteOpen}
+        onClose={() => !bulkDeleting && setIsBulkDeleteOpen(false)}
+        onConfirm={handleBulkDeleteConfirm}
+        submitting={bulkDeleting}
+        selectedStudents={students.filter((s) => selectedIds.includes(s.id))}
       />
 
       <StudentsModals

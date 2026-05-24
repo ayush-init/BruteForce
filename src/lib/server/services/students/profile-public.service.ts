@@ -47,8 +47,7 @@ export const getPublicStudentProfileService = async (username: string) => {
       batch_id: true,
       city: { select: { id: true, city_name: true } },
       batch: { select: { id: true, batch_name: true, year: true } },
-      leaderboards: true,
-      _count: { select: { progress: true } }
+      leaderboards: true
     }
   });
 
@@ -150,7 +149,14 @@ export const getPublicStudentProfileService = async (username: string) => {
       profileImageUrl: student.profile_image_url
     },
     codingStats: {
-      totalSolved: student._count.progress,
+      // Derived from the same Leaderboard counters that feed easy/medium/hard
+      // below, so the big "Total Solved" number can never disagree with the
+      // sum of the three difficulty bars. Both update together when the
+      // leaderboard sync cron runs (9 AM / 6 PM / 11 PM IST).
+      totalSolved:
+        (leaderboard?.easy_solved || 0) +
+        (leaderboard?.medium_solved || 0) +
+        (leaderboard?.hard_solved || 0),
       totalAssigned: (batchQuestionCounts?.easy_assigned || 0) + (batchQuestionCounts?.medium_assigned || 0) + (batchQuestionCounts?.hard_assigned || 0),
       easy: {
         assigned: batchQuestionCounts?.easy_assigned || 0,

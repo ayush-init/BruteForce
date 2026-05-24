@@ -380,7 +380,7 @@ export function RecentQuestionsSidebar() {
                                 onClick={() =>
                                   handleViewClass(question)
                                 }
-                                className="shrink-0 border border-white/10 bg-white/5 backdrop-blur-md hover:bg-primary hover:text-foreground transition-all"
+                                className="shrink-0 border border-white/10 bg-white/5 backdrop-blur-md hover:text-primary transition-all"
                               >
                                 View
                                 <ChevronRight className="w-3 h-3 ml-1" />

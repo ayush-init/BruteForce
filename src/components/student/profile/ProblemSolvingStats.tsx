@@ -1,6 +1,6 @@
 // src/components/student/profile/ProblemSolvingStats.tsx
 import React, { useEffect, useState } from "react";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Info } from "lucide-react";
 
 interface ProblemSolvingStatsProps {
   codingStats?: {
@@ -142,6 +142,8 @@ export function ProblemSolvingStats({ codingStats }: ProblemSolvingStatsProps) {
           label="Hard"
         />
       </div>
+
+     
     </div>
   );
 }
