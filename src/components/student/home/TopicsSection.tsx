@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { TopicCard } from '@/components/student/topics/TopicCard';
-import { BookOpen } from 'lucide-react';
+import { ArrowRight, BookOpen } from 'lucide-react';
 import { TopicsSectionShimmer } from '@/components/student/home/TopicsSectionShimmer';
 import { Topic } from '@/types/student/index.types';
 
@@ -26,12 +26,16 @@ export function TopicsSection({ topics, loading = false }: TopicsSectionProps) {
             </h2>
             <p className="text-[13px] text-muted-foreground">Jump back into your assigned topics</p>
           </div>
-          <Link
-            href="/topics"
-            className="text-[13px] font-semibold text-logo hover:text-logo/80 transition-colors hidden sm:flex items-center gap-1"
+          <Button
+            asChild
+            size="sm"
+            className="hidden sm:inline-flex rounded-2xl bg-logo/10! px-4 font-bold! text-logo!"
           >
-            View all <span>→</span>
-          </Link>
+            <Link href="/topics">
+              View all
+              <ArrowRight className="w-4 h-4" strokeWidth={3}/>
+            </Link>
+          </Button>
         </div>
       </div>
 
@@ -69,7 +73,10 @@ export function TopicsSection({ topics, loading = false }: TopicsSectionProps) {
 
       <div className="mt-8 text-center sm:hidden">
         <Button asChild variant="ghost" className="w-full text-primary">
-          <Link href="/topics">View all topics →</Link>
+          <Link href="/topics">
+            View all topics
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </Button>
       </div>
     </section>

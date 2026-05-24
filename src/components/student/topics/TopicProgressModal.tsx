@@ -138,11 +138,8 @@ export default function TopicProgressModal({
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1">
               <DialogTitle className="text-2xl sm:text-2xl font-bold flex items-center gap-2">
-
                 Topic
-
                 <span className="text-primary ">
-
                   Progress
                 </span>
               </DialogTitle>
@@ -256,9 +253,7 @@ export default function TopicProgressModal({
                     {/* TOP */}
                     <div className="flex items-center justify-between mb-2 sm:mb-3">
                       <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 text-primary">
-                          {getTopicIcon(topic.topic_name)}
-                        </div>
+                       
 
                         <div>
                           <h3 className="text-xs sm:text-sm font-semibold">
@@ -270,15 +265,15 @@ export default function TopicProgressModal({
                         </div>
                       </div>
 
-                      <span className="text-xs sm:text-sm font-semibold text-primary">
+                      <span className="text-xs sm:text-sm font-semibold text-logo">
                         {progress}%
                       </span>
                     </div>
 
                     {/* PROGRESS */}
-                    <div className="w-full h-1.5 sm:h-2 rounded-full bg-muted overflow-hidden">
+                    <div className="w-full h-1.5 sm:h-2 rounded-full bg-muted overflow-hidden border border-border ">
                       <div
-                        className={`h-full rounded-full ${colorMap[getColor(progress)]} transition-all duration-700`}
+                        className={`h-full rounded-full  ${colorMap[getColor(progress)]} transition-all duration-700`}
                         style={{ width: `${progress}%` }}
                       />
                     </div>
@@ -303,7 +298,7 @@ interface StatProps {
 function Stat({ icon, label, value }: StatProps) {
   return (
     <div className="rounded-2xl glass p-4 flex items-center gap-3 backdrop-blur-sm  hover:border-primary/30 transition-all">
-      <div className="p-2 bg-primary/10 rounded text-primary">{icon}</div>
+      <div className="p-2 bg-logo/10 rounded text-logo">{icon}</div>
       <div>
         <p className="text-sm text-muted-foreground">{label}</p>
         <p className="font-semibold">{value}</p>

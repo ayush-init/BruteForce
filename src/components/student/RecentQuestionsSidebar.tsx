@@ -5,11 +5,9 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   X,
   ChevronRight,
-  Loader2,
   Calendar,
 } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
@@ -82,7 +80,9 @@ export function RecentQuestionsSidebar() {
 
     try {
       const queryDate = date || selectedDate;
-      const currentPage = reset ? 1 : page;
+      // On reset we fetch page 1. Otherwise the page state holds the last
+      // page we successfully loaded, so the next page is page + 1.
+      const currentPage = reset ? 1 : page + 1;
       const response = await apiClient.get(
         `/api/students/recent-questions?date=${queryDate}&page=${currentPage}&limit=12`,
         { signal }
@@ -98,10 +98,9 @@ export function RecentQuestionsSidebar() {
       }
 
       setHasMore(pag?.hasNext || false);
-
-      if (!reset) {
-        setPage(prev => prev + 1);
-      }
+      // Keep `page` in sync with what was actually fetched so the next
+      // loadMore picks up from the right spot.
+      setPage(currentPage);
     } catch (err: unknown) {
       if (axios.isCancel(err)) return;
       const error = err as ApiError;
@@ -184,16 +183,19 @@ export function RecentQuestionsSidebar() {
     );
   };
 
-  const getDifficultyVariant = (difficulty: string) => {
+  const getDifficultyClassName = (difficulty: string) => {
+    const base =
+      "border-transparent px-4 py-2 rounded-2xl text-center text-xs font-bold uppercase tracking-wider";
+
     switch (difficulty.toLowerCase()) {
       case "easy":
-        return "default";
+        return `${base} bg-easy/20 text-easy hover:bg-easy/20`;
       case "medium":
-        return "secondary";
+        return `${base} bg-medium/20 text-medium hover:bg-medium/20`;
       case "hard":
-        return "destructive";
+        return `${base} bg-hard/20 text-hard hover:bg-hard/20`;
       default:
-        return "outline";
+        return base;
     }
   };
 
@@ -278,9 +280,9 @@ export function RecentQuestionsSidebar() {
 
               {/* Content */}
               <CardContent className="p-0">
-                <ScrollArea
+                <div
                   ref={scrollRef}
-                  className="h-[calc(100vh-140px)] px-4 py-4"
+                  className="h-[calc(100vh-140px)] px-4 py-4 overflow-y-auto"
                   onScroll={handleScroll}
                 >
 
@@ -360,10 +362,8 @@ export function RecentQuestionsSidebar() {
                                 <div className="flex items-center gap-2">
 
                                   <Badge
-                                    variant={getDifficultyVariant(
-                                      question.difficulty
-                                    )}
-                                    className="text-xs font-medium"
+                                    variant="outline"
+                                    className={getDifficultyClassName(question.difficulty)}
                                   >
                                     {question.difficulty}
                                   </Badge>
@@ -380,7 +380,7 @@ export function RecentQuestionsSidebar() {
                                 onClick={() =>
                                   handleViewClass(question)
                                 }
-                                className="shrink-0 border border-white/10 bg-white/5 backdrop-blur-md hover:bg-primary hover:text-black transition-all"
+                                className="shrink-0 border border-white/10 bg-white/5 backdrop-blur-md hover:bg-primary hover:text-foreground transition-all"
                               >
                                 View
                                 <ChevronRight className="w-3 h-3 ml-1" />
@@ -395,10 +395,30 @@ export function RecentQuestionsSidebar() {
                     </div>
                   )}
 
-                  {/* Load more indicator */}
+                  {/* Load more indicator — skeleton matches initial-load cards */}
                   {loadingMore && (
-                    <div className="flex justify-center py-4">
-                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    <div className="space-y-4 mt-4">
+                      {Array.from({ length: 2 }).map((_, i) => (
+                        <Card
+                          key={`more-${i}`}
+                          className="glass rounded-2xl animate-in fade-in slide-in-from-bottom-2"
+                          style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-center gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="h-4 w-full bg-muted/50 rounded mb-2 animate-pulse" />
+                                <div className="h-4 w-3/4 bg-muted/40 rounded animate-pulse" />
+                                <div className="flex items-center gap-2 mt-3">
+                                  <div className="h-5 w-12 bg-muted/40 rounded-full animate-pulse" />
+                                  <div className="h-3 w-16 bg-muted/30 rounded animate-pulse" />
+                                </div>
+                              </div>
+                              <div className="h-8 w-16 bg-muted/50 rounded-lg animate-pulse" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
                   )}
 
@@ -409,7 +429,7 @@ export function RecentQuestionsSidebar() {
                     </div>
                   )}
 
-                </ScrollArea>
+                </div>
               </CardContent>
 
             </Card>

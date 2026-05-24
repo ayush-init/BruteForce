@@ -18,7 +18,6 @@ import { TopicsSectionShimmer } from '@/components/student/home/TopicsSectionShi
 import { Topic, User, StudentDataResponse, DashboardStats } from '@/types/student/index.types';
 
 
-
 export default function StudentHomePage() {
 
   const router = useRouter();
