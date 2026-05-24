@@ -35,9 +35,11 @@ export function SidebarItem({
 
   return (
     <>
-      {/* Divider */}
+      {/* Divider — kept tight (pt-3 not pt-5) so the gap above the
+          "Management" label matches the gap between Dashboard and the
+          top of the nav. The old pt-5 / pb-2 was visibly lopsided. */}
       {showDivider && !isCollapsed && (
-        <div className="text-[10px] uppercase tracking-widest text-muted-foreground/70 font-mono px-3 pt-5 pb-2">
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground/70 font-mono px-3 pt-3 pb-2">
           {dividerLabel}
         </div>
       )}

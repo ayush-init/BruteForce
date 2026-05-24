@@ -30,7 +30,7 @@ export function TopicsHeader({ searchQuery, setSearchQuery, sortBy, setSortBy }:
 
         <p className="text-sm text-muted-foreground max-w-xl leading-relaxed">
           Track your progress across different data structure and algorithm topics.
-          Complete classes and solve questions to master each module.
+          
         </p>
       </div>
 

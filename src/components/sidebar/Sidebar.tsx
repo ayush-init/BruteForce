@@ -4,6 +4,7 @@ import React from "react";
 import { LogOut, LucideIcon, ChevronRight, Link } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SidebarItem } from "./SidebarItem";
+import Logo from "@/components/Logo";
 
 export interface SidebarNavItems {
   href: string;
@@ -76,15 +77,18 @@ export function Sidebar({
           className="relative h-full w-full flex flex-col rounded-2xl glass overflow-hidden no-scrollbar  "
         >
 
-          {/* HEADER */}
+          {/* HEADER — locked to h-14 so its vertical centre matches the
+              top-right page header (which is also h-14) for the
+              admin / superadmin layouts. Both share the same `mt-3 / p-3`
+              outer offset, so equal heights → centres line up exactly. */}
           <motion.div
             layout
             className={`
-              p-4 flex items-center
+              h-14 px-4 pt-6 pb-12 flex items-center
               ${isCollapsed ? "justify-center" : "justify-between"}
             `}
           >
-            {/* LOGO */}
+           
             <motion.h1
               layout="position"
               initial={false}
@@ -93,12 +97,10 @@ export function Sidebar({
                 width: isCollapsed ? 0 : "auto",
               }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="font-serif  text-2xl font-bold text-logo tracking-tight whitespace-nowrap"
+              aria-label="BruteForce"
+              className="flex items-center overflow-hidden whitespace-nowrap [&_svg]:!w-[165px] [&_svg]:!h-[65px]"
             >
-              <motion.span className="text-2xl md:text-2xl font-bold leading-[1.05] tracking-tight">
-                <motion.span className="text-foreground">Brute</motion.span>
-                <motion.span className="text-[var(--accent-primary)] ">Force</motion.span>
-              </motion.span>
+              <Logo />
             </motion.h1>
 
             {/* TOGGLE BUTTON */}
@@ -109,7 +111,7 @@ export function Sidebar({
               whileTap={{ scale: 0.95 }}
               className="
                 flex items-center justify-center
-                h-9 w-9 rounded-full
+                h-8 w-8 rounded-2xl
                 bg-[var(--glass-bg)]
                 backdrop-blur-md
                 border border-[var(--glass-border)]

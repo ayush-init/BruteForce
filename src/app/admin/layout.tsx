@@ -262,8 +262,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   const navItems = [
-    { label: 'Overview', href: '/admin', icon: LayoutDashboard },
-    { label: 'Topics & Classes', href: '/admin/topics', icon: BookOpen },
+    { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    // Management section starts here — divider rendered ABOVE this item
+    // (same pattern the superadmin layout uses).
+    { label: 'Topics & Classes', href: '/admin/topics', icon: BookOpen, showDivider: true, dividerLabel: 'Management' },
     { label: 'Question Bank', href: '/admin/questions', icon: HelpCircle },
     { label: 'Students', href: '/admin/students', icon: Users },
     { label: 'Leaderboard', href: '/admin/leaderboard', icon: Trophy },

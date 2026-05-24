@@ -29,9 +29,9 @@ export function StatCard({ title, value, icon: Icon, subtitle, onClick, ringColo
       <div className="flex items-center justify-between mb-2 relative">
         <h3 className="text-xl font-bold text-muted-foreground">{title}</h3>
 
-        <div className="p-2 rounded bg-primary/5 border border-primary/10 
+        <div className="p-2 rounded bg-logo/5 border border-logo/10 
     group-hover:scale-110 transition">
-          <Icon className="h-4 w-4 text-primary" />
+          <Icon className="h-4 w-4 text-logo" />
         </div>
       </div>
 

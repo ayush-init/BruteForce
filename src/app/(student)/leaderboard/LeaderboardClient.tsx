@@ -132,8 +132,7 @@ export default function LeaderboardClient({ syncSchedule = [] }: { syncSchedule?
     <>
 
       <YourRank yourRank={data?.yourRank} />
-      <div className="max-w-375 xl:max-w-275 2xl:max-w-375  mx-auto px-8 py-2">
-
+        <div className=" mx-auto max-w-7xl w-full pb-4 px-4 sm:px-6 lg:px-8 xl:px-12 pt-4">
         <LeaderboardHeader
           lCity={lCity}
           lYear={lYear}

@@ -24,8 +24,7 @@ export default function PodiumSection({ top3, loading, selectedCity }: PodiumSec
   return (
     <div className=" relative flex justify-center items-center gap-6 md:gap-12 pt-6 pb-8">
 
-      {/* 🌌 Background Glow */}
-      <div className="absolute w-[600px] h-[600px] bg-primary/10 blur-[140px] rounded-full top-[-30%]" />
+      
 
       {/* 🏆 Podium Layout */}
       <div className="flex items-center gap-6 md:gap-12">

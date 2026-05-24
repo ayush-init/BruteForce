@@ -20,7 +20,7 @@ export function CityBreakdownChart({ cityBreakdown }: CityBreakdownChartProps) {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-chart-1" />
+          <BarChart3 className="h-4 w-4 text-logo" />
           City Overview
         </h3>
 
