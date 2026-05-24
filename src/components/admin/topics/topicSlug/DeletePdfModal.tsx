@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/api';
+import { showSuccess } from '@/ui/toast';
 import { Button } from '@/components/ui/button';
 import {
    Dialog,
@@ -25,7 +26,7 @@ export default function DeletePdfModal({ isOpen, onClose, onSuccess, batchSlug, 
    const [submitting, setSubmitting] = useState(false);
    const [formError, setFormError] = useState('');
 
-   const handleDelete = async () => {
+   const handleDelete = useCallback(async () => {
       setFormError('');
       setSubmitting(true);
       try {
@@ -38,6 +39,7 @@ export default function DeletePdfModal({ isOpen, onClose, onSuccess, batchSlug, 
             },
          });
 
+         showSuccess('PDF Removed', 'The PDF has been removed from this class.');
          onClose();
          onSuccess();
       } catch (err: any) {
@@ -46,7 +48,18 @@ export default function DeletePdfModal({ isOpen, onClose, onSuccess, batchSlug, 
       } finally {
          setSubmitting(false);
       }
-   };
+   }, [batchSlug, topicSlug, classSlug, onClose, onSuccess]);
+
+   useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+         if (!isOpen) return;
+         if (e.key === 'Enter' && !submitting) {
+            handleDelete();
+         }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+   }, [isOpen, submitting, handleDelete]);
 
    return (
       <Dialog open={isOpen} onOpenChange={onClose}>

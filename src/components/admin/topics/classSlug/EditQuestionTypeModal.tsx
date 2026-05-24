@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { updateQuestionVisibilityType } from '@/services/admin.service';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,7 +33,7 @@ export default function EditQuestionTypeModal({ isOpen, onClose, onSuccess, batc
       }
    }, [question]);
 
-   const handleSubmit = async () => {
+   const handleSubmit = useCallback(async () => {
       if (!question) return;
       setSubmitting(true);
       try {
@@ -52,7 +52,18 @@ export default function EditQuestionTypeModal({ isOpen, onClose, onSuccess, batc
       } finally {
          setSubmitting(false);
       }
-   };
+   }, [question, batchSlug, topicSlug, classSlug, editType, onClose, onSuccess]);
+
+   useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+         if (!isOpen) return;
+         if (e.key === 'Enter' && !submitting) {
+            handleSubmit();
+         }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+   }, [isOpen, submitting, handleSubmit]);
 
    return (
       <Dialog open={isOpen} onOpenChange={onClose}>

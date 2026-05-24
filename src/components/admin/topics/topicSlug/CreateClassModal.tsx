@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '@/api';
+import { showSuccess } from '@/ui/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PdfPreview } from '@/components/ui/PdfPreview';
@@ -85,6 +86,7 @@ export default function CreateClassModal({ isOpen, onClose, onSuccess, batchSlug
             },
          });
 
+         showSuccess('Class Created', 'The new class has been added to this topic.');
          onClose();
          resetForm();
          onSuccess();
@@ -129,7 +131,7 @@ export default function CreateClassModal({ isOpen, onClose, onSuccess, batchSlug
                </DialogHeader>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar  p-4 sm:p-6 space-y-4 sm:space-y-5 ">
+            <form id="create-class-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar  p-4 sm:p-6 space-y-4 sm:space-y-5 ">
                {formError && (
                   <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-xs sm:text-sm rounded-xl">
                      {formError}
@@ -266,13 +268,10 @@ export default function CreateClassModal({ isOpen, onClose, onSuccess, batchSlug
                      Cancel
                   </Button>
                   <Button
+                     form="create-class-form"
                      type="submit"
-                     onClick={(e) => {
-                        e.preventDefault();
-                        handleSubmit(e);
-                     }}
                      disabled={submitting}
-                     className="rounded-xl px-4 sm:px-6 h-10 sm:h-11 bg-primary hover:bg-primary/90 
+                     className="rounded-xl px-4 sm:px-6 h-10 sm:h-11 bg-primary hover:bg-primary/90
             shadow-lg shadow-primary/20 transition-all flex-1 sm:flex-none"
                   >
                      {submitting ? "Creating..." : "Create Class"}

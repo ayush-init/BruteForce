@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '@/api';
+import { showSuccess } from '@/ui/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PdfPreview } from '@/components/ui/PdfPreview';
@@ -126,6 +127,7 @@ export default function EditClassModal({ isOpen, onClose, onSuccess, batchSlug, 
             },
          });
 
+         showSuccess('Class Updated', 'The class details have been saved.');
          onClose();
          resetForm();
          onSuccess();
@@ -172,7 +174,7 @@ export default function EditClassModal({ isOpen, onClose, onSuccess, batchSlug, 
                </DialogHeader>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar p-4 sm:p-6 space-y-4 sm:space-y-5">
+            <form id="edit-class-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar p-4 sm:p-6 space-y-4 sm:space-y-5">
                {formError && (
                   <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-xs sm:text-sm rounded-xl">
                      {formError}
@@ -262,9 +264,6 @@ export default function EditClassModal({ isOpen, onClose, onSuccess, batchSlug, 
                               <div>
                                  <p className="text-xs sm:text-sm font-medium">
                                     {isS3Pdf(classData.pdf_url) ? 'Current PDF' : 'External Link'}
-                                 </p>
-                                 <p className="text-[10px] sm:text-xs text-muted-foreground">
-                                    {isS3Pdf(classData.pdf_url) ? 'Stored in S3' : 'External URL'}
                                  </p>
                               </div>
                            </div>
@@ -408,11 +407,8 @@ export default function EditClassModal({ isOpen, onClose, onSuccess, batchSlug, 
                      Cancel
                   </Button>
                   <Button
+                     form="edit-class-form"
                      type="submit"
-                     onClick={(e) => {
-                        e.preventDefault();
-                        handleSubmit(e);
-                     }}
                      disabled={submitting}
                      className="rounded-2xl px-4 sm:px-6 h-10 sm:h-11 bg-primary hover:bg-primary/90
             shadow-lg shadow-primary/20 transition-all flex-1 sm:flex-none"
