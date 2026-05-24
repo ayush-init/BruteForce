@@ -89,7 +89,7 @@ export function TopicCard({
             </div>
 
             <div className="px-2 py-0.5 rounded-2xl bg-muted/40 border border-border/50">
-              {solvedQuestions}/{totalQuestions} Questions
+              {totalQuestions === 0 ? "No questions" : `${solvedQuestions}/${totalQuestions} Questions`}
             </div>
           </div>
         )}

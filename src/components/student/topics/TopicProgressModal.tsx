@@ -260,7 +260,9 @@ export default function TopicProgressModal({
                             {topic.topic_name}
                           </h3>
                           <p className="text-[10px] sm:text-xs text-muted-foreground">
-                            {topic.solvedQuestions} / {topic.totalQuestions}
+                            {topic.totalQuestions === 0
+                              ? "No questions"
+                              : `${topic.solvedQuestions} / ${topic.totalQuestions}`}
                           </p>
                         </div>
                       </div>

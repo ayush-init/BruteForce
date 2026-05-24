@@ -45,7 +45,9 @@ export function StudentLoginForm() {
     if (isSubmitting.current) return;
     isSubmitting.current = true;
 
-    const emailOrUsername = values.email || values.username || '';
+    const email = values.email?.trim().toLowerCase();
+    const username = values.username?.trim().toLowerCase();
+    const emailOrUsername = email || username || '';
 
     if (emailOrUsername.includes('@')) {
       if (!emailOrUsername.endsWith('@pwioi.com')) {
@@ -59,9 +61,9 @@ export function StudentLoginForm() {
       setLoading(true);
       setEmailError('');
 
-      const payload = values.email
-        ? { email: values.email, password: values.password }
-        : { username: values.username, password: values.password };
+      const payload = email
+        ? { email, password: values.password }
+        : { username, password: values.password };
 
       const data: StudentLoginResponse = await studentAuthService.login(payload);
 
@@ -118,7 +120,7 @@ export function StudentLoginForm() {
               placeholder="Enter your email or username"
               value={form.watch("email") || form.watch("username") || ""}
               onChange={(e) => {
-                const value = e.target.value;
+                const value = e.target.value.trim().toLowerCase();
 
                 if (value.includes('@')) {
                   form.setValue('email', value, { shouldValidate: true });

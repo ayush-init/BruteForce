@@ -105,60 +105,62 @@ export default function ActivityHeatmap({
       </div>
 
       {/* Heatmap */}
-      <div className="flex gap-3">
+      <div className="w-full overflow-x-auto overflow-y-visible pb-2 sm:overflow-visible sm:pb-0">
+        <div className="flex min-w-[760px] gap-3 sm:min-w-0">
 
-        {/* Week Labels (FIXED ALIGNMENT) */}
-        <div className="relative w-8 text-[13px] text-[var(--muted-foreground)] ">
-          <span className="absolute top-[42px] ">Mon</span>
-          <span className="absolute top-[76px]">Wed</span>
-          <span className="absolute top-[112px]">Fri</span>
-        </div>
-
-        <div className="flex flex-col w-full ms-5">
-
-          {/* Months (PERFECT ALIGNMENT) */}
-          <div className="flex mb-2 text-[11px] text-[var(--muted-foreground)]">
-            {weeks.map((_, i) => (
-              <div key={i} className="flex-1 text-center">
-                {months.find((m) => m.index === i)?.label || ""}
-              </div>
-            ))}
+          {/* Week Labels (FIXED ALIGNMENT) */}
+          <div className="relative w-8 shrink-0 text-[13px] text-[var(--muted-foreground)] ">
+            <span className="absolute top-[42px] ">Mon</span>
+            <span className="absolute top-[76px]">Wed</span>
+            <span className="absolute top-[112px]">Fri</span>
           </div>
 
-          {/* Grid (PERFECT SPACING) */}
-          <div className="flex w-full justify-between ">
-            {weeks.map((week, wi) => (
-              <div key={wi} className="flex flex-col gap-[4px] flex-1 items-center">
-                {Array.from({ length: 7 }).map((_, di) => {
-                  const date = week[di];
+          <div className="flex w-full flex-col ms-5">
 
-                  if (!date)
-                    return <div className="w-[14px] h-[14px]" key={di} />;
+            {/* Months (PERFECT ALIGNMENT) */}
+            <div className="flex mb-2 text-[11px] text-[var(--muted-foreground)]">
+              {weeks.map((_, i) => (
+                <div key={i} className="flex-1 text-center">
+                  {months.find((m) => m.index === i)?.label || ""}
+                </div>
+              ))}
+            </div>
 
-                  const key = date.toLocaleDateString("en-CA");
-                  const count = dataMap.get(key) ?? 0;
-                  const prettyDate = date.toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  });
-                  const tooltipText =
-                    count === -1
-                      ? `Freeze day on ${prettyDate}`
-                      : `${count} ${count === 1 ? "submission" : "submissions"} on ${prettyDate}`;
-                  return (
-                    <div
-                      key={di}
-                      className={`relative group w-[14px] h-[14px] rounded-[3px] ${getColor(count)} cursor-pointer`}
-                    >
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium whitespace-nowrap bg-[#1f2937] text-white rounded-2xl border border-white/10 shadow-xl pointer-events-none z-[9999] opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                        {tooltipText}
+            {/* Grid (PERFECT SPACING) */}
+            <div className="flex w-full justify-between ">
+              {weeks.map((week, wi) => (
+                <div key={wi} className="flex flex-col gap-[4px] flex-1 items-center">
+                  {Array.from({ length: 7 }).map((_, di) => {
+                    const date = week[di];
+
+                    if (!date)
+                      return <div className="w-[14px] h-[14px]" key={di} />;
+
+                    const key = date.toLocaleDateString("en-CA");
+                    const count = dataMap.get(key) ?? 0;
+                    const prettyDate = date.toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    });
+                    const tooltipText =
+                      count === -1
+                        ? `Freeze day on ${prettyDate}`
+                        : `${count} ${count === 1 ? "submission" : "submissions"} on ${prettyDate}`;
+                    return (
+                      <div
+                        key={di}
+                        className={`relative group w-[14px] h-[14px] rounded-[3px] ${getColor(count)} cursor-pointer`}
+                      >
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium whitespace-nowrap bg-[#1f2937] text-white rounded-2xl border border-white/10 shadow-xl pointer-events-none z-[9999] opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                          {tooltipText}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
