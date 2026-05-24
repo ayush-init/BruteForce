@@ -104,12 +104,12 @@ export default function ActivityHeatmap({
         </h3>
       </div>
 
-      {/* Heatmap */}
-      <div className="w-full overflow-x-auto overflow-y-visible pb-2 sm:overflow-visible sm:pb-0">
+      
+      <div className=" overflow-x-auto overflow-y-visible pb-2 sm:overflow-visible sm:pb-0">
         <div className="flex min-w-[760px] gap-3 sm:min-w-0">
 
           {/* Week Labels (FIXED ALIGNMENT) */}
-          <div className="relative w-8 shrink-0 text-[13px] text-[var(--muted-foreground)] ">
+          <div className="relative w-0 shrink-0 text-[11px] text-[var(--muted-foreground)] ">
             <span className="absolute top-[42px] ">Mon</span>
             <span className="absolute top-[76px]">Wed</span>
             <span className="absolute top-[112px]">Fri</span>
@@ -127,7 +127,7 @@ export default function ActivityHeatmap({
             </div>
 
             {/* Grid (PERFECT SPACING) */}
-            <div className="flex w-full justify-between ">
+            <div className="flex w-full justify-between">
               {weeks.map((week, wi) => (
                 <div key={wi} className="flex flex-col gap-[4px] flex-1 items-center">
                   {Array.from({ length: 7 }).map((_, di) => {

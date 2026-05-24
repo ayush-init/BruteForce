@@ -132,6 +132,18 @@ export function InfiniteScrollDropdown({
     }
   };
 
+  /* Sync internal selection with the controlled `value` prop.
+     The internal `selectedTopic` drives both the trigger label and the X
+     button. Without this sync, an external reset (e.g. a parent "Clear
+     filters" button setting value="") leaves the dropdown visually stuck
+     on the previously-picked topic. We only react to the empty case so we
+     don't fight `handleSelect` when the user is actively choosing one. */
+  useEffect(() => {
+    if (!value) {
+      setSelectedTopic(null);
+    }
+  }, [value]);
+
   /* Initial Load */
   useEffect(() => {
     if (isOpen && topics.length === 0) {

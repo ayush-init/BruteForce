@@ -49,6 +49,15 @@ export const updateProfileSchema = z.object({
   gfg_id: z.string().optional(),
   github: z.string().url('Invalid GitHub URL').optional().or(z.literal('')),
   linkedin: z.string().url('Invalid LinkedIn URL').optional().or(z.literal('')),
+  // Username is whitelisted here so the onboarding flow (and any other client
+  // that bundles profile fields) can update it in one PUT. The dedicated
+  // PATCH /api/students/username endpoint still exists for the standalone
+  // "change username" UX — the service layer handles both paths identically.
+  username: z
+    .string()
+    .min(3, 'Username must be at least 3 characters')
+    .max(50, 'Username must be at most 50 characters')
+    .optional(),
 });
 
 /**
