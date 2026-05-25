@@ -91,7 +91,8 @@ export function EditUsernameModal({
 
   // INPUT HANDLER - Same logic as OnboardingStep1
   const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+    // Lowercase + only allow a-z, 0-9, and underscore
+    const value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
     setUsernameForm({ ...usernameForm, username: value });
 
     if (debounceTimerRef.current) {
@@ -297,6 +298,10 @@ export function EditUsernameModal({
                 {getStatusMessage()}
               </div>
             </div>
+
+            <p className="text-[11px] text-muted-foreground">
+              Only lowercase letters, numbers and <span className="font-mono">_</span> are allowed.
+            </p>
 
 
           </div>

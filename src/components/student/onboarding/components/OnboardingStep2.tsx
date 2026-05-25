@@ -34,7 +34,7 @@ export function OnboardingStep2({ data, setData, setStep }: OnboardingStep2Props
             type="text"
             value={data.leetcode_id ?? ""}
             onChange={(e) =>
-              setData({ ...data, leetcode_id: e.target.value })
+              setData({ ...data, leetcode_id: e.target.value.toLowerCase() })
             }
             placeholder="ayush_dev"
             required
@@ -74,7 +74,7 @@ export function OnboardingStep2({ data, setData, setStep }: OnboardingStep2Props
             type="text"
             value={data.gfg_id ?? ""}
             onChange={(e) =>
-              setData({ ...data, gfg_id: e.target.value })
+              setData({ ...data, gfg_id: e.target.value.toLowerCase() })
             }
             placeholder="dhruv608"
             required
