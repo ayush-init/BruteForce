@@ -57,6 +57,11 @@ export interface ClassTableProps {
   onEdit: (cls: Class) => void;
   onDelete: (cls: Class) => void;
   onViewQuestions: (cls: Class) => void;
+  // Multi-select — owned by the parent page so the bulk-delete toolbar
+  // (which lives outside this component) stays in sync.
+  selectedSlugs: string[];
+  onToggleSelect: (slug: string) => void;
+  onToggleSelectAll: () => void;
 }
 
 export interface CreateClassModalProps {

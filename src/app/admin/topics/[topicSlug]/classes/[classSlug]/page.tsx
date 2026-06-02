@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAdminStore } from '@/store/adminStore';
 import { apiClient } from '@/api';
 import {
-   removeQuestionFromClass
+   removeQuestionFromClass,
+   bulkRemoveQuestionsFromClass,
 } from '@/services/admin.service';
 import AssignQuestionsModal from '@/components/admin/topics/classSlug/AssignQuestionsModal';
 import EditQuestionTypeModal from '@/components/admin/topics/classSlug/EditQuestionTypeModal';
@@ -14,13 +15,18 @@ import ClassDetailHeader from '@/components/admin/topics/classSlug/ClassDetailHe
 import ClassDetailFilter from '@/components/admin/topics/classSlug/ClassDetailFilter';
 import ClassDetailTable from '@/components/admin/topics/classSlug/ClassDetailTable';
 import ClassDetailShimmer from '@/components/admin/topics/classSlug/ClassDetailShimmer';
+import BulkDeleteModal from '@/components/admin/BulkDeleteModal';
+import { Button } from '@/components/ui/button';
 import {
    BookOpen,
+   Trash2,
+   X as XIcon,
 } from 'lucide-react';
 import { Pagination } from '@/components/Pagination';
 import { DeleteModal } from '@/components/DeleteModal';
 import { ClassAssignedQuestion, ClassDetails, ApiError } from '@/types/admin/index.types';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { showSuccess } from '@/ui/toast';
 
 export default function AdminClassDetailsPage() {
    const params = useParams();
@@ -56,6 +62,12 @@ export default function AdminClassDetailsPage() {
    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
    const [deletingQuestion, setDeletingQuestion] = useState<ClassAssignedQuestion | null>(null);
    const [submitting, setSubmitting] = useState(false);
+
+   // Bulk-delete selection — tracked by question id so it survives row
+   // reordering on refetch. Cleared on any context change.
+   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+   const [bulkDeleting, setBulkDeleting] = useState(false);
 
    // Refs for preventing double API calls
    const isFetchingAssigned = useRef(false);
@@ -165,6 +177,66 @@ export default function AdminClassDetailsPage() {
       setIsEditTypeOpen(true);
    };
 
+   // Reset selection on any context change.
+   useEffect(() => {
+      setSelectedIds([]);
+   }, [selectedBatch?.id, topicSlug, classSlug, debouncedSearch, debouncedPage, debouncedLimit]);
+
+   const toggleSelect = useCallback((id: number) => {
+      setSelectedIds((prev) =>
+         prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      );
+   }, []);
+
+   // Pull the question id off either the wrapped row or the inline shape —
+   // server has historically returned both, see ClassDetailTable.
+   const visibleIds = assignedQuestions.map((row) => row.question?.id ?? row.id);
+   const toggleSelectAll = useCallback(() => {
+      setSelectedIds((prev) => {
+         const allSelected =
+            visibleIds.length > 0 && visibleIds.every((id) => prev.includes(id));
+         if (allSelected) {
+            const visibleSet = new Set(visibleIds);
+            return prev.filter((id) => !visibleSet.has(id));
+         }
+         const next = new Set(prev);
+         visibleIds.forEach((id) => next.add(id));
+         return Array.from(next);
+      });
+   }, [visibleIds]);
+
+   const clearSelection = useCallback(() => setSelectedIds([]), []);
+
+   const handleBulkDeleteConfirm = async () => {
+      if (selectedIds.length === 0 || !selectedBatch) return;
+      setBulkDeleting(true);
+      try {
+         const { deleted, requested } = await bulkRemoveQuestionsFromClass(
+            selectedBatch.slug,
+            topicSlug,
+            classSlug,
+            selectedIds
+         );
+         showSuccess(
+            'Bulk Remove Complete',
+            deleted === requested
+               ? `Removed ${deleted} ${deleted === 1 ? 'question' : 'questions'} from this class.`
+               : `Removed ${deleted} of ${requested} (some were already removed).`
+         );
+         setIsBulkDeleteOpen(false);
+         setSelectedIds([]);
+         lastFetchAssignedParams.current = { page: 0, limit: 0, search: '', topicSlug: '', classSlug: '' };
+         fetchAssigned();
+      } catch (err) {
+         // Error is handled by API client interceptor.
+      } finally {
+         setBulkDeleting(false);
+      }
+   };
+
+   const selectedQuestionRows = assignedQuestions
+      .filter((row) => selectedIds.includes(row.question?.id ?? row.id));
+
 
    if (isLoadingContext || (loading && !classDetails)) {
       return <ClassDetailShimmer />;
@@ -206,12 +278,76 @@ export default function AdminClassDetailsPage() {
             assignedTotalCount={assignedTotalCount}
          />
 
+         {/* Bulk-action toolbar — only when ≥1 question is selected. */}
+         {selectedIds.length > 0 && (
+            <div className="glass backdrop-blur-2xl mb-3 rounded-2xl p-3 px-4 flex items-center justify-between gap-3 border border-primary/20">
+               <div className="flex items-center gap-2 text-sm">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary font-semibold text-xs">
+                     {selectedIds.length}
+                  </span>
+                  <span className="text-foreground font-medium">
+                     {selectedIds.length === 1 ? 'question' : 'questions'} selected
+                  </span>
+               </div>
+
+               <div className="flex items-center gap-2">
+                  <Button
+                     variant="outline"
+                     onClick={clearSelection}
+                     disabled={bulkDeleting}
+                     className="h-9 rounded-xl px-3 text-xs border!"
+                  >
+                     <XIcon className="w-3.5 h-3.5 mr-1.5" />
+                     Clear
+                  </Button>
+                  <Button
+                     variant="destructive"
+                     onClick={() => setIsBulkDeleteOpen(true)}
+                     disabled={bulkDeleting}
+                     className="h-9 rounded-xl px-4 text-xs font-semibold"
+                  >
+                     <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                     Remove Selected
+                  </Button>
+               </div>
+            </div>
+         )}
+
          {/* QUESTIONS TABLE */}
          <ClassDetailTable
             assignedQuestions={assignedQuestions}
             loading={loading}
             onEditType={handleOpenEditType}
             onRemoveQuestion={handleRemoveQuestion}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onToggleSelectAll={toggleSelectAll}
+         />
+
+         <BulkDeleteModal
+            isOpen={isBulkDeleteOpen}
+            onClose={() => !bulkDeleting && setIsBulkDeleteOpen(false)}
+            onConfirm={handleBulkDeleteConfirm}
+            submitting={bulkDeleting}
+            subjectLabel={{ singular: 'Question', plural: 'Questions' }}
+            warningText="The selected questions will be detached from this class. Students will no longer see them in this class's assignments."
+            confirmLabel={`Remove ${selectedIds.length}`}
+            items={selectedQuestionRows.map((row) => {
+               // The questions-for-class API returns the question fields
+               // inline on the row (no `.question` wrapper) — the type
+               // permits both shapes because older callers got wrapped
+               // payloads. Cast through unknown so we can read either.
+               const q = (row.question ?? row) as unknown as {
+                  id: number;
+                  question_name?: string;
+                  platform?: string;
+               };
+               return {
+                  key: q.id,
+                  primary: q.question_name ?? 'Untitled question',
+                  secondary: q.platform,
+               };
+            })}
          />
 
          {/* PAGINATION */}

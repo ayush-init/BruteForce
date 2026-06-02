@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Pagination } from '@/components/Pagination';
 import { Avatar } from '@/components/ui/Avatar';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AdminStudent } from '@/types/student/index.types';
 
@@ -56,13 +57,6 @@ export default function StudentsTable({
     students.length > 0 && students.every((s) => selectedSet.has(s.id));
   const someOnPageSelected =
     students.some((s) => selectedSet.has(s.id)) && !allOnPageSelected;
-  // Indeterminate has to be set imperatively — React doesn't expose it as a prop.
-  const headerCheckboxRef = React.useRef<HTMLInputElement>(null);
-  React.useEffect(() => {
-    if (headerCheckboxRef.current) {
-      headerCheckboxRef.current.indeterminate = someOnPageSelected;
-    }
-  }, [someOnPageSelected]);
 
   return (
     <div className="glass backdrop-blur-2xl px-3 mb-5 rounded-2xl overflow-hidden">
@@ -72,14 +66,12 @@ export default function StudentsTable({
           <TableHeader>
             <TableRow className="bg-muted/30 border-b border-border/40">
               <TableHead className="w-10">
-                <input
-                  ref={headerCheckboxRef}
-                  type="checkbox"
+                <Checkbox
                   checked={allOnPageSelected}
+                  indeterminate={someOnPageSelected}
                   onChange={onToggleSelectAll}
                   disabled={loading || students.length === 0}
                   aria-label="Select all students on this page"
-                  className="w-4 h-4 accent-primary cursor-pointer disabled:cursor-not-allowed"
                 />
               </TableHead>
               <TableHead>Student</TableHead>
@@ -97,7 +89,7 @@ export default function StudentsTable({
                 {[1, 2, 3, 4, 5].map((i) => (
                   <TableRow key={`skeleton-${i}`} className="border-b border-border/20">
                     <TableCell>
-                      <Skeleton className="w-4 h-4 rounded" />
+                      <Skeleton className="w-[18px] h-[18px] rounded-md" />
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -141,12 +133,10 @@ export default function StudentsTable({
                 >
                   {/* SELECT */}
                   <TableCell>
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedSet.has(student.id)}
                       onChange={() => onToggleSelect(student.id)}
                       aria-label={`Select ${student.name}`}
-                      className="w-4 h-4 accent-primary cursor-pointer"
                     />
                   </TableCell>
 

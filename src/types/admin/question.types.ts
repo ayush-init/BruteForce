@@ -10,7 +10,7 @@ export type Question = {
     topic_name: string;
     slug: string;
   };
-  isAssignedToClass?: boolean;
+  isAssignedInTopic?: boolean;
   created_at?: string;
   updated_at?: string;
 };

@@ -29,7 +29,7 @@ export const getAllQuestionsService = async ({
 }: GetAllQuestionsInput) => {
 
   const where: Prisma.QuestionWhereInput = {};
-  let assignmentClassId: number | undefined;
+  let topicClassIds: number[] | undefined;
 
   //  Pagination safety - enforce max limit
   const validatedLimit = Math.min(Math.max(limit, 1), 100);
@@ -39,21 +39,25 @@ export const getAllQuestionsService = async ({
     ? assignmentStatus
     : 'all';
 
+  // Resolve ALL sibling class IDs within the same batch+topic so the
+  // assignment check spans the whole topic (not just the current class).
+  // A question already assigned to any class in this batch+topic should be
+  // treated as "assigned" — the student view dedupes by question per topic,
+  // so allowing re-assign across sibling classes causes count mismatches.
   if (assignmentBatchSlug && assignmentTopicSlug && assignmentClassSlug) {
-    const cls = await prisma.class.findFirst({
+    const classes = await prisma.class.findMany({
       where: {
-        slug: assignmentClassSlug,
         batch: { slug: assignmentBatchSlug },
         topic: { slug: assignmentTopicSlug },
       },
-      select: { id: true },
+      select: { id: true, slug: true },
     });
 
-    if (!cls) {
+    if (!classes.some(c => c.slug === assignmentClassSlug)) {
       throw new ApiError(400, "Class not found in this topic and batch");
     }
 
-    assignmentClassId = cls.id;
+    topicClassIds = classes.map(c => c.id);
   }
 
   //  Topic filter (using relation filter instead of separate query)
@@ -92,10 +96,10 @@ export const getAllQuestionsService = async ({
     }
   }
 
-  if (assignmentClassId && normalizedAssignmentStatus !== 'all') {
+  if (topicClassIds && normalizedAssignmentStatus !== 'all') {
     where.visibility = normalizedAssignmentStatus === 'assigned'
-      ? { some: { class_id: assignmentClassId } }
-      : { none: { class_id: assignmentClassId } };
+      ? { some: { class_id: { in: topicClassIds } } }
+      : { none: { class_id: { in: topicClassIds } } };
   }
 
   const [questions, total] = await prisma.$transaction([
@@ -108,10 +112,10 @@ export const getAllQuestionsService = async ({
             slug: true,
           },
         },
-        ...(assignmentClassId
+        ...(topicClassIds
           ? {
               visibility: {
-                where: { class_id: assignmentClassId },
+                where: { class_id: { in: topicClassIds } },
                 select: { id: true },
               },
             }
@@ -131,10 +135,10 @@ export const getAllQuestionsService = async ({
     visibility: Array<{ id: number }>;
   }>;
 
-  const data = assignmentClassId
+  const data = topicClassIds
     ? questionsWithVisibility.map(({ visibility, ...question }) => ({
         ...question,
-        isAssignedToClass: visibility.length > 0,
+        isAssignedInTopic: visibility.length > 0,
       }))
     : questions;
 

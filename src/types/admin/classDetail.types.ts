@@ -42,6 +42,11 @@ export interface ClassDetailTableProps {
   loading: boolean;
   onEditType: (question: ClassAssignedQuestion) => void;
   onRemoveQuestion: (questionId: number) => void;
+  // Multi-select — owned by the parent page so the bulk-delete toolbar
+  // (which lives outside this component) stays in sync.
+  selectedIds: number[];
+  onToggleSelect: (id: number) => void;
+  onToggleSelectAll: () => void;
 }
 
 export interface AssignQuestionsModalProps {

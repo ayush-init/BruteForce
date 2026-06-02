@@ -241,7 +241,7 @@ export default function AssignQuestionsModal({ isOpen, onClose, onSuccess, batch
                      </div>
                   ) : (
                      bankQuestions.map((q) => {
-                        const isAssigned = q.isAssignedToClass ?? assignedQuestions.some(
+                        const isAssigned = q.isAssignedInTopic ?? assignedQuestions.some(
                            (aq) => (aq.question?.id || aq.id) === q.id
                         );
                         const selectedQ = selectedQuestions.find(sq => sq.id === q.id);

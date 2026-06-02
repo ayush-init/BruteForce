@@ -113,6 +113,70 @@ export const removeQuestionFromClassService = async ({
   return true;
 };
 
+/**
+ * Bulk-remove assigned questions from a class. Single deleteMany so the DB
+ * does the filtering; the visibility table is unique on (class_id,
+ * question_id) so passing IDs that aren't assigned is a no-op — we report
+ * the actual count back so the admin sees "5 of 7 removed" when some had
+ * already been removed in another tab.
+ */
+export const bulkRemoveQuestionsFromClassService = async ({
+  batchId,
+  topicSlug,
+  classSlug,
+  questionIds,
+}: {
+  batchId: number;
+  topicSlug: string;
+  classSlug: string;
+  questionIds: number[];
+}) => {
+  const topic = await prisma.topic.findUnique({
+    where: { slug: topicSlug },
+    select: { id: true },
+  });
+
+  if (!topic) {
+    throw new ApiError(400, "Topic not found");
+  }
+
+  const cls = await prisma.class.findFirst({
+    where: {
+      slug: classSlug,
+      batch_id: batchId,
+      topic_id: topic.id,
+    },
+    select: { id: true },
+  });
+
+  if (!cls) {
+    throw new ApiError(400, "Class not found in this topic and batch");
+  }
+
+  const result = await prisma.questionVisibility.deleteMany({
+    where: {
+      class_id: cls.id,
+      question_id: { in: questionIds },
+    },
+  });
+
+  await updateBatchQuestionCounts(batchId);
+
+  // Same invalidation surface as the single-remove flow — keeping these in
+  // sync is the whole point of having one bulk endpoint instead of N single
+  // ones.
+  await CacheInvalidation.invalidateAssignedQuestionsForBatch(batchId);
+  await CacheInvalidation.invalidateTopicsForBatch(batchId);
+  await CacheInvalidation.invalidateTopicOverviewsForBatch(batchId);
+  await CacheInvalidation.invalidateClassProgressForBatch(batchId);
+  await CacheInvalidation.invalidateBookmarks();
+  await CacheInvalidation.invalidateAllStudentProfiles();
+  await CacheInvalidation.invalidateAllLeaderboards();
+  await CacheInvalidation.invalidateRecentQuestions();
+
+  return { requested: questionIds.length, deleted: result.count };
+};
+
 interface UpdateVisibilityTypeInput {
   batchId: number;
   topicSlug: string;

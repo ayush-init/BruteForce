@@ -57,6 +57,30 @@ export const assignQuestionsSchema = z.object({
 });
 
 /**
+ * Bulk Delete Classes Schema
+ * POST /api/admin/:batchSlug/topics/:topicSlug/classes/bulk-delete
+ * Capped at 100 — a single topic rarely holds more than a few dozen classes
+ * and a tighter cap keeps the per-class S3 cleanup loop bounded.
+ */
+export const bulkDeleteClassesSchema = z.object({
+  slugs: z
+    .array(z.string().min(1))
+    .min(1, "At least one class slug is required")
+    .max(100, "Cannot delete more than 100 classes at once"),
+});
+
+/**
+ * Bulk Remove Assigned Questions Schema
+ * POST /api/admin/:batchSlug/topics/:topicSlug/classes/:classSlug/questions/bulk-delete
+ */
+export const bulkRemoveQuestionsFromClassSchema = z.object({
+  ids: z
+    .array(z.number().int().positive())
+    .min(1, "At least one question ID is required")
+    .max(200, "Cannot remove more than 200 questions at once"),
+});
+
+/**
  * Topic Slug Param Schema
  */
 export const topicSlugParamSchema = z.object({

@@ -1,9 +1,11 @@
 "use client";
 
+import React from 'react';
 import { Trash2, ExternalLink, Pencil } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { LeetCodeIcon, GeeksforGeeksIcon } from '@/components/platform/PlatformIcons';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
    Table,
    TableBody,
@@ -19,7 +21,30 @@ function BadgeByLevel({ level }: { level: string }) {
    return <span className="px-2 py-0.5 rounded text-xs font-semibold text-muted-foreground">{level}</span>;
 }
 
-export default function ClassDetailTable({ assignedQuestions, loading, onEditType, onRemoveQuestion }: ClassDetailTableProps) {
+// Pulls the canonical question id out of an assigned-question row.
+// Server returns either { question: {...}, ... } (newer) or the question
+// inline (older). Both shapes carry `.id` so a single accessor works for
+// both — typing it as `ClassAssignedQuestion` is enough because that
+// interface admits both keys via the optional question field.
+const getQuestionId = (row: import('@/types/admin/classDetail.types').ClassAssignedQuestion): number =>
+   row.question?.id ?? row.id;
+
+export default function ClassDetailTable({
+   assignedQuestions,
+   loading,
+   onEditType,
+   onRemoveQuestion,
+   selectedIds,
+   onToggleSelect,
+   onToggleSelectAll,
+}: ClassDetailTableProps) {
+   const selectedSet = React.useMemo(() => new Set(selectedIds), [selectedIds]);
+   const visibleIds = assignedQuestions.map(getQuestionId);
+   const visibleCount = visibleIds.length;
+   const selectedVisibleCount = visibleIds.filter((id) => selectedSet.has(id)).length;
+   const allOnPageSelected = visibleCount > 0 && selectedVisibleCount === visibleCount;
+   const someOnPageSelected = selectedVisibleCount > 0 && !allOnPageSelected;
+
    return (
       <div className="p-2 mb-5 rounded-2xl glass bg-linear-to-br from-background/80 to-background/40 backdrop-blur-3xl shadow-sm overflow-hidden">
 
@@ -29,6 +54,15 @@ export default function ClassDetailTable({ assignedQuestions, loading, onEditTyp
                {/* HEADER */}
                <TableHeader>
                   <TableRow className="border-0">
+                     <TableHead className="w-10 pl-3">
+                        <Checkbox
+                           checked={allOnPageSelected}
+                           indeterminate={someOnPageSelected}
+                           onChange={onToggleSelectAll}
+                           disabled={loading || visibleCount === 0}
+                           aria-label="Select all questions on this page"
+                        />
+                     </TableHead>
                      <TableHead className="text-muted-foreground font-medium text-xs tracking-wide">
                         Question Name
                      </TableHead>
@@ -57,30 +91,27 @@ export default function ClassDetailTable({ assignedQuestions, loading, onEditTyp
                      <>
                         {[1, 2, 3, 4, 5].map((i) => (
                            <TableRow key={`skeleton-${i}`} className="border-0">
-                              {/* QUESTION SKELETON */}
+                              <TableCell className="pl-3">
+                                 <Skeleton className="w-[18px] h-[18px] rounded-md" />
+                              </TableCell>
                               <TableCell className="py-3">
                                  <Skeleton className="h-5 w-48" />
                               </TableCell>
-                              {/* PLATFORM SKELETON */}
                               <TableCell>
                                  <div className="flex items-center gap-2">
                                     <Skeleton className="w-4 h-4" />
                                     <Skeleton className="h-4 w-20" />
                                  </div>
                               </TableCell>
-                              {/* DIFFICULTY SKELETON */}
                               <TableCell>
                                  <Skeleton className="h-6 w-16" />
                               </TableCell>
-                              {/* TYPE SKELETON */}
                               <TableCell>
                                  <Skeleton className="h-6 w-20" />
                               </TableCell>
-                              {/* DATE SKELETON */}
                               <TableCell>
                                  <Skeleton className="h-4 w-24" />
                               </TableCell>
-                              {/* ACTIONS SKELETON */}
                               <TableCell className="text-right">
                                  <div className="flex items-center justify-end gap-1">
                                     <Skeleton className="h-8 w-8" />
@@ -92,7 +123,7 @@ export default function ClassDetailTable({ assignedQuestions, loading, onEditTyp
                      </>
                   ) : assignedQuestions.length === 0 ? (
                      <TableRow>
-                        <TableCell colSpan={6} className="p-0 border-0 h-48">
+                        <TableCell colSpan={7} className="p-0 border-0 h-48">
                            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground glass backdrop-blur-sm rounded-2xl p-10 m-4">
                               <DotLottieReact src="/Empty.json" loop autoplay className="w-40 h-40" />
                               <div className="font-semibold text-foreground mb-1">No questions found</div>
@@ -103,12 +134,21 @@ export default function ClassDetailTable({ assignedQuestions, loading, onEditTyp
                   ) : (
                      assignedQuestions.map((qObj: any) => {
                         const q = qObj.question || qObj;
+                        const isSelected = selectedSet.has(q.id);
 
                         return (
                            <TableRow
                               key={q.id}
-                              className="hover:bg-accent/80  px-2 transition-all duration-200"
+                              data-selected={isSelected ? 'true' : undefined}
+                              className="hover:bg-accent/80 px-2 transition-all duration-200 data-[selected=true]:bg-primary/5"
                            >
+                              <TableCell className="pl-3">
+                                 <Checkbox
+                                    checked={isSelected}
+                                    onChange={() => onToggleSelect(q.id)}
+                                    aria-label={`Select ${q.question_name}`}
+                                 />
+                              </TableCell>
 
                               {/* QUESTION */}
                               <TableCell className=" py-3">

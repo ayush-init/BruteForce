@@ -91,6 +91,24 @@ export const deleteAdminClass = async (batchSlug: string, topicSlug: string, cla
   return response.data;
 };
 
+// Toast fired by the caller so it can include the "X of Y" + skipped reasons
+// in the message — generic toast here would lose that nuance.
+export const bulkDeleteAdminClasses = async (
+  batchSlug: string,
+  topicSlug: string,
+  slugs: string[]
+) => {
+  const response = await apiClient.post(
+    `/api/admin/${batchSlug}/topics/${topicSlug}/classes/bulk-delete`,
+    { slugs }
+  );
+  return response.data as {
+    requested: number;
+    deleted: number;
+    skipped: Array<{ slug: string; reason: string }>;
+  };
+};
+
 // ==========================================
 // ADMIN PANEL CLASS QUESTIONS ENDPOINTS
 // ==========================================
@@ -121,6 +139,20 @@ export const removeQuestionFromClass = async (batchSlug: string, topicSlug: stri
   const response = await apiClient.delete(`/api/admin/${batchSlug}/topics/${topicSlug}/classes/${classSlug}/questions/${questionId}`);
   showSuccess('Question Removed', 'The question has been removed from this class.');
   return response.data;
+};
+
+// Toast fired by the caller so it can include the "X of Y" count.
+export const bulkRemoveQuestionsFromClass = async (
+  batchSlug: string,
+  topicSlug: string,
+  classSlug: string,
+  ids: number[]
+) => {
+  const response = await apiClient.post(
+    `/api/admin/${batchSlug}/topics/${topicSlug}/classes/${classSlug}/questions/bulk-delete`,
+    { ids }
+  );
+  return response.data as { requested: number; deleted: number };
 };
 
 // Update question visibility type (edit homework/classwork for assigned question)

@@ -363,6 +363,117 @@ export const updateClassService = async ({
   }
 };
 
+/**
+ * Bulk-delete classes within a single topic.
+ *
+ * Mirrors the single-delete rules (you can't delete a class that still has
+ * assigned questions) but reports per-class outcomes so the admin can see
+ * which ones were skipped and why instead of getting a single all-or-nothing
+ * error. Returns:
+ *   {
+ *     requested: number,        // how many slugs the admin sent
+ *     deleted:   number,        // how many actually got removed
+ *     skipped:   { slug, reason }[]   // per-class reason for everything else
+ *   }
+ *
+ * S3-hosted PDFs are cleaned up best-effort after the DB delete — a failed
+ * S3 cleanup must not roll back the deletion, since the class row is what
+ * actually matters to the admin.
+ */
+export const bulkDeleteClassesService = async ({
+  batchId,
+  topicSlug,
+  slugs,
+}: {
+  batchId: number;
+  topicSlug: string;
+  slugs: string[];
+}) => {
+  if (!topicSlug) {
+    throw new ApiError(400, "Invalid topic slug");
+  }
+
+  const topic = await prisma.topic.findUnique({
+    where: { slug: topicSlug },
+    select: { id: true },
+  });
+
+  if (!topic) {
+    throw new ApiError(400, "Topic not found");
+  }
+
+  const candidates = await prisma.class.findMany({
+    where: {
+      slug: { in: slugs },
+      batch_id: batchId,
+      topic_id: topic.id,
+    },
+    select: {
+      id: true,
+      slug: true,
+      pdf_url: true,
+      _count: { select: { questionVisibility: true } },
+    },
+  });
+
+  const skipped: Array<{ slug: string; reason: string }> = [];
+  const deletable: typeof candidates = [];
+
+  for (const slug of slugs) {
+    const c = candidates.find((x) => x.slug === slug);
+    if (!c) {
+      skipped.push({ slug, reason: "Not found in this topic and batch" });
+      continue;
+    }
+    if (c._count.questionVisibility > 0) {
+      skipped.push({ slug, reason: "Has assigned questions" });
+      continue;
+    }
+    deletable.push(c);
+  }
+
+  // Collect S3 keys before the DB delete so we don't lose the URLs.
+  const s3Keys: string[] = [];
+  for (const c of deletable) {
+    if (c.pdf_url?.includes("amazonaws.com/class-pdfs/")) {
+      const parts = c.pdf_url.split("/");
+      s3Keys.push(`class-pdfs/${parts[parts.length - 1]}`);
+    }
+  }
+
+  let deletedCount = 0;
+  if (deletable.length > 0) {
+    const result = await prisma.class.deleteMany({
+      where: { id: { in: deletable.map((c) => c.id) } },
+    });
+    deletedCount = result.count;
+  }
+
+  // Best-effort S3 cleanup. A failed delete here is logged but does not
+  // surface as an error — the source-of-truth (DB) is already updated.
+  if (s3Keys.length > 0) {
+    await Promise.all(
+      s3Keys.map((k) =>
+        S3Service.deleteFile(k).catch((err) =>
+          console.error(`Failed to cleanup PDF ${k} from S3:`, err)
+        )
+      )
+    );
+  }
+
+  if (deletedCount > 0) {
+    await CacheInvalidation.invalidateTopicsForBatch(batchId);
+    await CacheInvalidation.invalidateTopicOverviewsForBatch(batchId);
+    await CacheInvalidation.invalidateClassProgressForBatch(batchId);
+  }
+
+  return {
+    requested: slugs.length,
+    deleted: deletedCount,
+    skipped,
+  };
+};
+
 export const deleteClassService = async ({
   batchId,
   topicSlug,
